@@ -11,6 +11,7 @@ from della_soft.views import Order
 def index():
     return rx.text("Login")
 
+#Publicación de páginas
 app = rx.App()
 app.add_page(Menu.menu, route="/menu")
 app.add_page(index)
