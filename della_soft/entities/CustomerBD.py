@@ -1,18 +1,12 @@
 import reflex as rx
 
-from sqlmodel import SQLModel, Field, create_engine
-import rxconfig as cf
+from sqlmodel import SQLModel, Field
 
-
-class Customer(rx.Model, table=True):
+class CustomerBD(SQLModel, table=True):
     id: int = Field(default=None, primary_key=True, nullable=False)
     first_name: str = Field(nullable=False)
     contact: str = Field(nullable=False)
     div: int | None = Field(default=None, nullable=True)
     username: str | None = Field(default=None, nullable=True)
     password: str | None = Field(default=None, nullable=True)
-    id_rol: int | None = Field(default=None, nullable=True)
-
-engine = create_engine(cf.config.db_url, echo=True)
-
-SQLModel.metadata.create_all(engine)
+    id_rol: int | None = Field(default=None, nullable=True, foreign_key="ROL.ID")
