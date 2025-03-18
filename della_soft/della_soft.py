@@ -2,10 +2,10 @@ import reflex as rx
 
 from rxconfig import config
 
-from della_soft.screens import Menu
-from della_soft.screens import CustomerView
-from della_soft.screens import Product
-from della_soft.screens import Order
+from della_soft.views import Menu
+from della_soft.views import CustomerView
+from della_soft.views import Product
+from della_soft.views import Order
 
 #FrontEnd
 def index():
