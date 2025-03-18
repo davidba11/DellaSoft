@@ -2,12 +2,13 @@ import reflex as rx
 
 from rxconfig import config
 
-from della_soft.entities import CustomerBD
+#from della_soft.entities import CustomerBD
+from della_soft.entities.CustomerBD import Customer
 
 from typing import Any, List, Dict
 
 class CustomerView(rx.State):
-    data: list[CustomerBD]
+    data: list[Customer]
     columns: List[str] = ["Nombre", "Apellido", "Contacto", "Acciones"]
 
     def edit_customer(customers: list):
@@ -17,7 +18,7 @@ class CustomerView(rx.State):
     def get_customers():
         with rx.session() as session:
             data = session.exec(
-                CustomerBD.select()
+                Customer.select()
             ).all()
 
 
@@ -34,26 +35,26 @@ def show_data(customers: list):
                     color_scheme="blue",
                     size="2",
                     variant="solid",
-                    on_click=lambda: CustomerBD.edit_customer(customers),
+                    on_click=lambda: Customer.edit_customer(customers),
                 ),
             ),
         ),
     )
     
-def customers():
+'''def customers():
 
     return rx.table.root(
         rx.table.header(
             rx.table.row(
-                rx.table.column_header_cell(CustomerBD.columns[0]),
-                rx.table.column_header_cell(CustomerBD.columns[1]),
-                rx.table.column_header_cell(CustomerBD.columns[2]),
-                rx.table.column_header_cell(CustomerBD.columns[3]),
+                rx.table.column_header_cell(Customer.columns[0]),
+                rx.table.column_header_cell(Customer.columns[1]),
+                rx.table.column_header_cell(Customer.columns[2]),
+                rx.table.column_header_cell(Customer.columns[3]),
             ),
         ),
         rx.table.body(
             rx.foreach(
-                CustomerBD.data, show_data
+                Customer.data, show_data
             )
-        ),
-    )
+        ),'''
+   # )
