@@ -2,7 +2,7 @@ import reflex as rx
 
 from sqlmodel import Field, create_engine, SQLModel
 
-
+from .RolModel import Rol
 from rxconfig import config
 
 
@@ -16,6 +16,6 @@ class Customer(rx.Model, table=True):
     password: str | None = Field(default=None, nullable=True)
     id_rol: int | None = Field(default=None, nullable=True)
 
-engine = create_engine(config.db_url, echo=True)
+'''engine = create_engine(config.db_url, echo=True)
 
-SQLModel.metadata.create_all(engine)
+SQLModel.metadata.create_all(engine)'''
