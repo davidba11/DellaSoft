@@ -1,21 +1,27 @@
+from typing import Optional, TYPE_CHECKING
 import reflex as rx
 
-from sqlmodel import Field, create_engine, SQLModel
+from sqlmodel import Field, Relationship
 
-from .RolModel import Rol
-from rxconfig import config
-
-
+#Para evitar importaciones circulares
+if TYPE_CHECKING:
+    from .RolModel import Rol
 
 class Customer(rx.Model, table=True):
-    id: int = Field(default=None, primary_key=True, nullable=False)
+
+    #Como la clase no se llama igual al archivo que la contiene, se agrega __tablename__
+    __tablename__ = "customer"
+
+    id: int = Field(default=None, primary_key=True, nullable=False) #Se declara como PK
     first_name: str = Field(nullable=False)
     contact: str = Field(nullable=False)
     div: int | None = Field(default=None, nullable=True)
     username: str | None = Field(default=None, nullable=True)
     password: str | None = Field(default=None, nullable=True)
-    id_rol: int | None = Field(default=None, nullable=True)
+    id_rol: int = Field(foreign_key="rol.id_rol") #Se declara FK de rol
 
-'''engine = create_engine(config.db_url, echo=True)
-
-SQLModel.metadata.create_all(engine)'''
+    #Se comenta que un customer puede tener 0 o 1 rol
+    rol: Optional["Rol"] = Relationship(
+        #Se declara como se llama la relación del otro lado (Debe ser igual a la otra clase)
+        back_populates="customers"
+    )
