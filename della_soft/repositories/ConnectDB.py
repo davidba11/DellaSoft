@@ -1,5 +1,7 @@
-from sqlmodel import create_engine
+from sqlmodel import create_engine, SQLModel
 
 def connect():
-    return create_engine("postgresql://postgres:admin@localhost/DellaSoft")
+    engine = create_engine("postgresql://postgres:admin@localhost/DellaSoft")
+    SQLModel.metadata.create_all(engine)
+    return engine
 
