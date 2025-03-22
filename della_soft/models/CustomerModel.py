@@ -7,10 +7,7 @@ from sqlmodel import Field, Relationship
 if TYPE_CHECKING:
     from .RolModel import Rol
 
-class Customer(rx.Model, table=True):
 
-    #Como la clase no se llama igual al archivo que la contiene, se agrega __tablename__
-    __tablename__ = "customer"
 
     id: int = Field(default=None, primary_key=True, nullable=False) #Se declara como PK
     first_name: str = Field(nullable=False)
