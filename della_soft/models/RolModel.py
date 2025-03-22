@@ -1,14 +1,17 @@
 import reflex as rx
 
-from typing import Optional
-from sqlmodel import Field, create_engine, SQLModel
+from typing import List, Optional, TYPE_CHECKING
+from sqlmodel import Field, Relationship
 
-
-from rxconfig import config
+if TYPE_CHECKING:
+    from .CustomerModel import Customer
 
 class Rol (rx.Model, table=True):
-    id_rol: Optional[int] = Field(default=None, primary_key=True)
-    desciption: str
+    __tablename__ = "rol"
 
-engine = create_engine(config.db_url, echo=True)
-SQLModel.metadata.create_all(engine)
+    id_rol: Optional[int] = Field(default=None, primary_key=True)
+    description: str
+
+    customers: List["Customer"] = Relationship(
+        back_populates="rol"
+    )
