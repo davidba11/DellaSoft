@@ -9,9 +9,9 @@ def menu() -> rx.Component:
                 "Della Campagna Pastelería",
                 size="9",
                 weight="bold",
-                #color="#3E2723",
+                color="#3E2723",
                 high_contrast=True,
-                #fontFamily="Lucida Handwriting"
+                fontFamily="DejaVu Sans Mono",
             ),
             rx.box(
                 rx.vstack(
@@ -19,7 +19,7 @@ def menu() -> rx.Component:
                         "Menú Principal",
                         size="6",
                         weight="bold",
-                        #color="#D81B60",
+                        color="#D81B60",
                         high_contrast=True,
                         width="100%",
                     ),
@@ -27,7 +27,7 @@ def menu() -> rx.Component:
                         rx.button(
                             "Clientes",
                             type="submit",
-                            #background_color="#D81B60",
+                            background_color="#D81B60",
                             border_radius="5px",
                             width="45%",
                             height="20%",
@@ -39,7 +39,7 @@ def menu() -> rx.Component:
                         rx.button(
                             "Productos",
                             type="submit",
-                            #background_color="#D81B60",
+                            background_color="#D81B60",
                             border_radius="5px",
                             width="45%",
                             height="20%",
@@ -53,7 +53,7 @@ def menu() -> rx.Component:
                         rx.button(
                             "Pedidos",
                             type="submit",
-                            #background_color="#D81B60",
+                            background_color="#D81B60",
                             border_radius="5px",
                             width="45%",
                             height="20%",
@@ -65,7 +65,7 @@ def menu() -> rx.Component:
                         rx.button(
                             "-",
                             type="submit",
-                            #background_color="#D81B60",
+                            background_color="#D81B60",
                             border_radius="5px",
                             width="45%",
                             height="20%",
@@ -76,7 +76,7 @@ def menu() -> rx.Component:
                     ),
                 ),
                 flex_grow="1",
-                #background_color="#FFF8E1",
+                background_color="#FFF8E1",
                 margin="12px",
                 padding="12px",
             ),
@@ -88,6 +88,6 @@ def menu() -> rx.Component:
         ),
         flex_grow="1",
         text_align="center",
-        #background_color="#FAE3D9",
+        background_color="#FAE3D9",
         height="100vh",
     ),
