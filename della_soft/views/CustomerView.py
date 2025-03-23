@@ -6,54 +6,124 @@ from della_soft.models import RolModel
 
 from typing import Any, List, Dict
 
-class CustomerView(rx.State):
-    '''data: list[CustomerBD]
-    columns: List[str] = ["Nombre", "Apellido", "Contacto", "Acciones"]
+from ..models.CustomerModel import Customer
 
-    def edit_customer(customers: list):
-        pass
+from ..services.CustomerService import select_all_customer_service, select_by_name_service, create_customer_service
 
-    @rx.event
-    def get_customers():
-        with rx.session() as session:
-            data = session.exec(
-                CustomerBD.select()
-            ).all()'''
+import asyncio
 
-
-def show_data(customers: list):
-    return rx.table.row(
-        rx.table.cell(customers[0]),
-        rx.table.cell(customers[1]),
-        rx.table.cell(customers[2]),
-        rx.table.cell(
-            rx.hstack(
-                rx.button(
-                    rx.icon("square-pen", size=22),
-                    rx.text("Edit", size="3"),
-                    color_scheme="blue",
-                    size="2",
-                    variant="solid",
-                    #on_click=lambda: CustomerBD.edit_customer(customers),
-                ),
-            ),
-        ),
-    )
+class CustomerStage(rx.State):
+    customers:list[Customer]
+    customer_search: str
     
-def customers():
+    async def get_all_customers(self):
+        self.customers = select_all_customer_service()
 
+    def load_customers(self):
+        asyncio.create_task(self.get_all_customers())
+
+    def get_customer_by_name(self):
+        self.customers = select_by_name_service(self.customer_search)
+        
+    #def search_customers(self):
+     #   asyncio.create_task(self.get_customer_by_name())
+
+    def search_on_change(self, value: str):
+        self.customer_search = value
+
+    def create_customer(self, data: dict):
+        try:
+            new_customer = create_customer_service(id=data['id'], first_name=data['first_name'], last_name=data['last_name'], contact=data['contact'], div=data['div'])
+            self.customers.append(new_customer)
+        except BaseException as e:
+            print(e.args)
+
+@rx.page(route='/customers', title='Clientes', on_load=CustomerStage.load_customers)
+def CustomerView() -> rx.Component:
+    return rx.flex(
+        rx.heading('Clientes', align='center'),
+        rx.hstack(
+            search_user_component(), 
+            create_user_dialog_component(),
+            justify='center',
+            style={"margin-top": "auto"}
+        ),
+        table_customer(CustomerStage.customers),
+        direction='column',
+        style = {"width": "60vw", "margin": "auto"}
+         
+
+    )
+
+def table_customer(list_customer: list[Customer]) -> rx.Component:
     return rx.table.root(
         rx.table.header(
             rx.table.row(
-                '''rx.table.column_header_cell(CustomerBD.columns[0]),
-                rx.table.column_header_cell(CustomerBD.columns[1]),
-                rx.table.column_header_cell(CustomerBD.columns[2]),
-                rx.table.column_header_cell(CustomerBD.columns[3]),'''
-            ),
+                rx.table.column_header_cell('Cedula'),
+                rx.table.column_header_cell('Nombre'),
+                rx.table.column_header_cell('Apellido'),	
+                rx.table.column_header_cell('Contacto'),	
+                rx.table.column_header_cell('Div'),
+                rx.table.column_header_cell('Accion') 
+            )
         ),
         rx.table.body(
-            '''rx.foreach(
-                CustomerBD.data, show_data
-            )'''
+            rx.foreach(list_customer, row_table)
+        )
+    )
+
+def row_table (customer: Customer) -> rx.Component:  
+    return rx.table.row(
+        rx.table.cell(customer.id),
+        rx.table.cell(customer.first_name),
+        rx.table.cell(customer.last_name),
+        rx.table.cell(customer.contact),
+        rx.table.cell(customer.div),
+        rx.table.cell(rx.hstack(
+            rx.button('Editar'),
+            rx.button('Eliminar')
+            ))
+                    
+            )
+
+def search_user_component () ->rx.Component:
+    return rx.hstack(
+        rx.input(placeholder='Buscar cliente', on_change=CustomerStage.search_on_change),
+        rx.button('Buscar', on_click=CustomerStage.get_customer_by_name)
+    )
+
+def create_customer_form() -> rx.Component:
+    return rx.form(
+        rx.vstack(
+            rx.input(placeholder='Cedula', id='id'),
+            rx.input(placeholder='Nombre', name='first_name'),
+            rx.input(placeholder='Apellido', name='last_name'),
+            rx.input(placeholder='Contacto', name='contact'),
+            rx.input(placeholder='Div', name='div'),
+            rx.dialog.close('Guardar', type='submit')   
+    ),
+    on_submit=CustomerStage.create_customer,
+    )
+
+def create_user_dialog_component() -> rx.Component:
+    return rx.dialog.root(
+        rx.dialog.trigger(rx.button('Crear Cliente')),
+        rx.dialog.content(
+            rx.flex(
+                rx.dialog.title('Crear Cliente'),
+                create_customer_form(),  # Formulario de creación de cliente
+                justify='center',
+                align='center',
+                direction='column',
+            ),
+            rx.flex(
+                rx.dialog.close(
+                    rx.button('Cancelar', color_scheme='gray', variant='soft')
+                ),
+                spacing="3",
+                margin_top="16px",
+                justify="end",
+            ),
         ),
+        style={"width": "300px"}
     )
