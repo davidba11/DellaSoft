@@ -1,4 +1,4 @@
-from typing import Optional, TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING, List
 import reflex as rx
 
 from sqlmodel import Field, Relationship
@@ -6,6 +6,9 @@ from sqlmodel import Field, Relationship
 #Para evitar importaciones circulares
 if TYPE_CHECKING:
     from .RolModel import Rol
+
+if TYPE_CHECKING:
+    from .OrderModel import Order
 
 class Customer(rx.Model, table=True):
 
@@ -26,3 +29,8 @@ class Customer(rx.Model, table=True):
         #Se declara como se llama la relación del otro lado (Debe ser igual a la otra clase)
         back_populates="customers"
     )
+
+    orders: Optional [List["Order"]] = Relationship(
+        #Se declara como se llama la relación del otro lado (Debe ser igual a la otra clase)
+        back_populates="customer"
+    )       

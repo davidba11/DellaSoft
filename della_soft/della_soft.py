@@ -15,6 +15,6 @@ def index():
 app = rx.App()
 app.add_page(Menu.menu, route="/menu")
 app.add_page(index)
-app.add_page(CustomerView.customers, route="/customers")
+app.add_page(CustomerView.customers, route="/customers", title='Clientes')  
 app.add_page(ProductView.products, route="/products", title='Productos')
 app.add_page(OrderView.orders, route="/orders")

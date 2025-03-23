@@ -12,7 +12,7 @@ from ..services.CustomerService import select_all_customer_service, select_by_na
 
 import asyncio
 
-class CustomerStage(rx.State):
+class CustomerView(rx.State):
     customers:list[Customer]
     customer_search: str
     
@@ -38,8 +38,8 @@ class CustomerStage(rx.State):
         except BaseException as e:
             print(e.args)
 
-@rx.page(route='/customers', title='Clientes', on_load=CustomerStage.load_customers)
-def CustomerView() -> rx.Component:
+@rx.page(on_load=CustomerView.load_customers)
+def customers() -> rx.Component:
     return rx.flex(
         rx.heading('Clientes', align='center'),
         rx.hstack(
@@ -48,7 +48,7 @@ def CustomerView() -> rx.Component:
             justify='center',
             style={"margin-top": "auto"}
         ),
-        table_customer(CustomerStage.customers),
+        table_customer(CustomerView.customers),
         direction='column',
         style = {"width": "60vw", "margin": "auto"}
          
@@ -88,8 +88,8 @@ def row_table (customer: Customer) -> rx.Component:
 
 def search_user_component () ->rx.Component:
     return rx.hstack(
-        rx.input(placeholder='Buscar cliente', on_change=CustomerStage.search_on_change),
-        rx.button('Buscar', on_click=CustomerStage.get_customer_by_name)
+        rx.input(placeholder='Buscar cliente', on_change=CustomerView.search_on_change),
+        rx.button('Buscar', on_click=CustomerView.get_customer_by_name)
     )
 
 def create_customer_form() -> rx.Component:
@@ -102,7 +102,7 @@ def create_customer_form() -> rx.Component:
             rx.input(placeholder='Div', name='div'),
             rx.dialog.close('Guardar', type='submit')   
     ),
-    on_submit=CustomerStage.create_customer,
+    on_submit=CustomerView.create_customer,
     )
 
 def create_user_dialog_component() -> rx.Component:
