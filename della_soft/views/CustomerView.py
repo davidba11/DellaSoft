@@ -8,13 +8,16 @@ from typing import Any, List, Dict
 
 from ..models.CustomerModel import Customer
 
-from ..services.CustomerService import select_all_customer_service, select_by_name_service, create_customer_service
+from ..services.CustomerService import select_all_customer_service, select_by_parameter_service, create_customer_service
+
+
 
 import asyncio
 
 class CustomerView(rx.State):
     customers:list[Customer]
     customer_search: str
+    error_message: str = '' 
     
     async def get_all_customers(self):
         self.customers = select_all_customer_service()
@@ -22,21 +25,25 @@ class CustomerView(rx.State):
     def load_customers(self):
         asyncio.create_task(self.get_all_customers())
 
-    def get_customer_by_name(self):
-        self.customers = select_by_name_service(self.customer_search)
-        
-    #def search_customers(self):
-     #   asyncio.create_task(self.get_customer_by_name())
-
+    def get_customer_by_parameter(self):
+        self.customers = select_by_parameter_service(self.customer_search)
+    
     def search_on_change(self, value: str):
         self.customer_search = value
 
-    def create_customer(self, data: dict):
+
+    async def create_customer(self, data: dict):
         try:
             new_customer = create_customer_service(id=data['id'], first_name=data['first_name'], last_name=data['last_name'], contact=data['contact'], div=data['div'])
-            self.customers.append(new_customer)
+            await self.get_all_customers()
+            #self.customers = self.customers + [new_customer]
+            yield
+            self.error_message = ""
         except BaseException as e:
-            print(e.args)
+            # Si ocurre un error, guarda el mensaje de error y muestra el pop-up
+            self.error_message = "Error: El cliente ya existe."
+            
+
 
 @rx.page(on_load=CustomerView.load_customers)
 def customers() -> rx.Component:
@@ -51,6 +58,8 @@ def customers() -> rx.Component:
         table_customer(CustomerView.customers),
         direction='column',
         style = {"width": "60vw", "margin": "auto"}
+
+        
          
 
     )
@@ -80,7 +89,7 @@ def row_table (customer: Customer) -> rx.Component:
         rx.table.cell(customer.contact),
         rx.table.cell(customer.div),
         rx.table.cell(rx.hstack(
-            rx.button('Editar'),
+            #rx.button('Editar'),
             rx.button('Eliminar')
             ))
                     
@@ -89,7 +98,7 @@ def row_table (customer: Customer) -> rx.Component:
 def search_user_component () ->rx.Component:
     return rx.hstack(
         rx.input(placeholder='Buscar cliente', on_change=CustomerView.search_on_change),
-        rx.button('Buscar', on_click=CustomerView.get_customer_by_name)
+        rx.button('Buscar', on_click=CustomerView.get_customer_by_parameter)
     )
 
 def create_customer_form() -> rx.Component:
@@ -100,9 +109,11 @@ def create_customer_form() -> rx.Component:
             rx.input(placeholder='Apellido', name='last_name'),
             rx.input(placeholder='Contacto', name='contact'),
             rx.input(placeholder='Div', name='div'),
-            rx.dialog.close('Guardar', type='submit')   
+            rx.dialog.close(rx.button('Guardar', type='submit')),
+            
     ),
     on_submit=CustomerView.create_customer,
+     
     )
 
 def create_user_dialog_component() -> rx.Component:
