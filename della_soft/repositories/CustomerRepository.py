@@ -35,3 +35,13 @@ def create_customer(customer: Customer):
         session.commit()
         query = select(Customer)
         return session.exec(query).all()
+    
+def delete_customer(id: int):
+    engine = connect()
+    with Session(engine) as session:
+        query = select(Customer).where(Customer.id == id)
+        customer = session.exec(query).first()
+        user_delete = session.exec(query).one()
+        session.delete(user_delete)
+        session.commit()
+        return session.exec(query).all()

@@ -8,7 +8,7 @@ from typing import Any, List, Dict
 
 from ..models.CustomerModel import Customer
 
-from ..services.CustomerService import select_all_customer_service, select_by_parameter_service, create_customer_service
+from ..services.CustomerService import select_all_customer_service, select_by_parameter_service, create_customer_service, delete_customer_service, select_by_id_service
 
 
 
@@ -43,7 +43,11 @@ class CustomerView(rx.State):
             # Si ocurre un error, guarda el mensaje de error y muestra el pop-up
             self.error_message = "Error: El cliente ya existe."
             
-
+    async def delete_user_by_id(self, id):
+        self.customers = delete_customer_service(id)
+        await self.get_all_customers()
+        
+    
 
 @rx.page(on_load=CustomerView.load_customers)
 def customers() -> rx.Component:
@@ -90,7 +94,7 @@ def row_table (customer: Customer) -> rx.Component:
         rx.table.cell(customer.div),
         rx.table.cell(rx.hstack(
             #rx.button('Editar'),
-            rx.button('Eliminar')
+            delete_user_dialog_component(customer.id)
             ))
                     
             )
@@ -135,6 +139,29 @@ def create_user_dialog_component() -> rx.Component:
                 margin_top="16px",
                 justify="end",
             ),
+            style={"width": "300px"}
         ),
-        style={"width": "300px"}
+        
     )
+def delete_user_dialog_component(id: int) -> rx.Component:
+    return rx.dialog.root(
+        rx.dialog.trigger(rx.button(rx.icon('trash-2'))),
+        rx.dialog.content(
+            rx.dialog.title('Eliminar Cliente'),
+            rx.dialog.description('¿Está seguro que desea eliminar este cliente?'),
+            rx.flex(
+                rx.dialog.close(
+                    rx.button('Cancelar', color_scheme='gray', variant='soft')
+                ),
+                rx.dialog.close(
+                    rx.button('Confirmar', on_click=CustomerView.delete_user_by_id(id))
+                ),
+                spacing="3",
+                margin_top="16px",
+                justify="end",
+            ),
+            #style={"width": "300px"}
+        ),
+        
+    )
+
