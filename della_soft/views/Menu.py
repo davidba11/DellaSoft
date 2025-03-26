@@ -8,8 +8,10 @@ class MenuView(rx.State):
     screen: str = "orders"
 
     def display_screen(self, screen: str):
-        if(screen=="products"):
-            ProductView.load_products(),
+        if(screen=="products_view"):
+            ProductView.load_products
+            print(ProductView.load_products)
+            rx.redirect("/")
         self.screen=screen
 
 def get_title():
@@ -30,13 +32,14 @@ def get_menu():
     return rx.vstack(
         rx.icon("notebook-pen", color="#3E2723", size=40, on_click=lambda: MenuView.display_screen("orders")),
         rx.icon("user",color="#3E2723", size=40, on_click=lambda: MenuView.display_screen("customers")),
-        rx.icon("cake",color="#3E2723", size=40, on_click=lambda: MenuView.display_screen("products")),
+        rx.icon("cake",color="#3E2723", size=40, on_click=lambda: MenuView.display_screen("products_view")),
         rx.icon("settings", color="#3E2723", size=40, on_click=lambda: MenuView.display_screen("users")),
         rx.spacer(),
         rx.icon("log-out", color="#3E2723", size=40),
         height="100%",
     ),
 
+@rx.page(on_load=ProductView.load_products)
 def menu() -> rx.Component:
     return rx.vstack(
         get_title(),
@@ -44,8 +47,8 @@ def menu() -> rx.Component:
             get_menu(),
             rx.container(
                 rx.cond(
-                    MenuView.screen=="products",
-                    products(),
+                    MenuView.screen=="products_view",
+                    products()
                 ),
             ),
         ),

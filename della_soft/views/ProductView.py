@@ -22,11 +22,14 @@ class ProductView(rx.State):
         self.value = value
 
     async def get_all_products(self):
-        self.data = select_all_product_service()
+        self.data = await select_all_product_service()
         print (self.data)
+        return self.data
 
-    def load_products(self):
-        asyncio.create_task(self.get_all_products())
+    @rx.event
+    async def load_products(self):
+        self.data = await self.get_all_products()
+        print (self.data)
 
     async def insert_product_controller(self, form_data: dict):
         try:
