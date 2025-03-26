@@ -1,4 +1,4 @@
-from ..repositories.CustomerRepository import select_all, select_by_parameter, create_customer, select_by_id, delete_customer
+from ..repositories.CustomerRepository import select_all, select_by_parameter, create_customer, select_by_id, delete_customer, get_total_items, get_customer_section
 from ..models.CustomerModel import Customer
 
 def select_all_customer_service():
@@ -24,3 +24,9 @@ def create_customer_service(id: int, first_name: str, last_name: str, contact: s
     
 def delete_customer_service(id: int):
     return delete_customer(id)  
+
+def get_total_items_service():
+    return get_total_items()
+
+def get_customer_section_service(offset: int, limit: int):
+    return get_customer_section(offset, limit)
