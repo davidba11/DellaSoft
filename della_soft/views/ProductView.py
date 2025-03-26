@@ -47,7 +47,7 @@ class ProductView(rx.State):
 def get_title():
     return rx.text(
         "Productos",
-        size="9",
+        size="7",
         weight="bold",
         color="#3E2723",
         high_contrast=True,
@@ -169,7 +169,6 @@ def get_table_body(product: Product):
 
 @rx.page(on_load=ProductView.load_products)
 def products() -> rx.Component:
-
     return rx.box(
         rx.vstack(
             get_title(),
@@ -181,18 +180,19 @@ def products() -> rx.Component:
                 rx.table.body(
                     rx.foreach(ProductView.data, get_table_body)
                 ),
-                width="80%",
+                width="80vw",
                 background_color="#FFF8E1",
                 border_radius="20px",
             ),
-            display="flex",
-            justifyContent="center",
-            alignItems="center",
-            padding="30px",
-            width="100%",
+            spacing="5",  # Espaciado entre elementos
+            align="center",
+            width="80vw",
         ),
-        flex_grow="1",
+        display="flex",
+        justifyContent="center",
+        alignItems="flex-start",
         text_align="center",
-        background_color="#FAE3D9",
-        height="100vh",
+        background_color="#FDEFEA",
+        width="92vw",
+        height="80vh",
     )

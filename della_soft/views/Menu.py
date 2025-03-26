@@ -2,8 +2,57 @@ import reflex as rx
 
 from rxconfig import config
 
+from .ProductView import ProductView, products
+
+class MenuView(rx.State):
+    screen: str = "orders"
+
+    def display_screen(self, screen: str):
+        if(screen=="products"):
+            ProductView.load_products(),
+        self.screen=screen
+
+def get_title():
+    return rx.text(
+        "Della Soft",
+        size="9",
+        weight="bold",
+        color="#3E2723",
+        high_contrast=True,
+        fontFamily="DejaVu Sans Mono",
+        width="100%",
+        display="flex",
+        justifyContent="center",
+        alignItems="center",
+    ),
+
+def get_menu():
+    return rx.vstack(
+        rx.icon("notebook-pen", color="#3E2723", size=40, on_click=lambda: MenuView.display_screen("orders")),
+        rx.icon("user",color="#3E2723", size=40, on_click=lambda: MenuView.display_screen("customers")),
+        rx.icon("cake",color="#3E2723", size=40, on_click=lambda: MenuView.display_screen("products")),
+        rx.icon("settings", color="#3E2723", size=40, on_click=lambda: MenuView.display_screen("users")),
+        rx.spacer(),
+        rx.icon("log-out", color="#3E2723", size=40),
+        height="100%",
+    ),
+
 def menu() -> rx.Component:
-    return rx.box(
+    return rx.vstack(
+        get_title(),
+        rx.hstack(
+            get_menu(),
+            rx.container(
+                rx.cond(
+                    MenuView.screen=="products",
+                    products(),
+                ),
+            ),
+        ),
+        height="100vh",
+        background_color="#FDEFEA",
+    ),
+    '''return rx.box(
         rx.vstack(
             rx.text(
                 "Della Campagna Pastelería",
@@ -90,4 +139,4 @@ def menu() -> rx.Component:
         text_align="center",
         background_color="#FAE3D9",
         height="100vh",
-    ),
+    ),'''
