@@ -7,12 +7,12 @@ from .ProductView import ProductView, products
 class MenuView(rx.State):
     screen: str = "orders"
 
+    @rx.event
     def display_screen(self, screen: str):
         if(screen=="products_view"):
-            ProductView.load_products
-            print(ProductView.load_products)
-            rx.redirect("/")
+            yield ProductView.load_products()
         self.screen=screen
+        self.set()
 
 def get_title():
     return rx.text(
@@ -39,7 +39,6 @@ def get_menu():
         height="100%",
     ),
 
-@rx.page(on_load=ProductView.load_products)
 def menu() -> rx.Component:
     return rx.vstack(
         get_title(),

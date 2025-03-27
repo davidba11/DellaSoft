@@ -5,13 +5,13 @@ from rxconfig import config
 
 from typing import Any, List
 
-from ..services.ProductService import select_all_product_service, create_product, get_product
+from ..services.ProductService import select_all_product_service, create_product, get_product, delete_product_service
 
 from ..models.ProductModel import Product
 
 class ProductView(rx.State):
     data: list[Product]
-    columns: List[str] = ["Nombre", "Descripción", "Tipo", "Acciones"]
+    columns: List[str] = ["ID","Nombre", "Descripción", "Tipo", "Acciones"]
     new_product: dict = {}
 
     input_search: str
@@ -22,22 +22,23 @@ class ProductView(rx.State):
         self.value = value
 
     async def get_all_products(self):
-        self.data = await select_all_product_service()
-        print (self.data)
-        return self.data
+        data = await select_all_product_service()
+        #print("Datos desde la BD:", data)
+        return data
 
     @rx.event
     async def load_products(self):
         self.data = await self.get_all_products()
-        print (self.data)
+        #print("Productos obtenidos:", self.data)
+        yield
+        self.set()
 
+    @rx.event
     async def insert_product_controller(self, form_data: dict):
         try:
-            print(form_data)
             new_product = create_product(id="", name=form_data['name'], description=form_data['description'], product_type=form_data['product_type'])
-            print(new_product)
-            await self.get_all_products()
-            #self.data.append(self.new_product)
+            yield ProductView.load_products()
+            self.set()
         except BaseException as e:
             print(e.args)
 
@@ -46,6 +47,11 @@ class ProductView(rx.State):
 
     def get_product(self):
         self.data = get_product(self.input_search)
+
+    @rx.event
+    async def delete_product_by_id(self, id):
+        self.data = delete_product_service(id)
+        yield ProductView.load_products()
 
 def get_title():
     return rx.text(
@@ -147,23 +153,25 @@ def get_table_header():
         rx.table.column_header_cell(ProductView.columns[1]),
         rx.table.column_header_cell(ProductView.columns[2]),
         rx.table.column_header_cell(ProductView.columns[3]),
+        rx.table.column_header_cell(ProductView.columns[4]),
         color="#3E2723",
         background_color="#A67B5B",
     ),
 
 def get_table_body(product: Product):
     return rx.table.row(
+        rx.table.cell(product.id),
         rx.table.cell(product.name),
         rx.table.cell(product.description),
         rx.table.cell(product.product_type),
         rx.table.cell(
             rx.hstack(
                 rx.button(
-                    rx.icon("square-pen", size=22),
-                    rx.text("Edit", size="3"),
+                    rx.icon("trash", size=22),
                     background_color="#3E2723",
                     size="2",
                     variant="solid",
+                    on_click=ProductView.delete_product_by_id(product.id)
                 ),
             ),
         ),
