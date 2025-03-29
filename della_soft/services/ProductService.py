@@ -12,9 +12,9 @@ def select_product(value: str):
     else:
         return select_all()
 
-def create_product(id: int, name: str, description: str, product_type: str):
+def create_product(id: int, name: str, description: str, product_type: str, price: id):
 
-    product_save = Product(id=id, name=name, description=description, product_type=product_type)
+    product_save = Product(id=id, name=name, description=description, product_type=product_type, price=price)
     return insert_product(product_save)
 
 def delete_product_service(id: int):

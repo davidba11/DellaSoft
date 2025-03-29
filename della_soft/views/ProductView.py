@@ -11,7 +11,7 @@ from ..models.ProductModel import Product
 
 class ProductView(rx.State):
     data: list[Product]
-    columns: List[str] = ["ID","Nombre", "Descripción", "Tipo", "Acciones"]
+    columns: List[str] = ["Nombre", "Descripción", "Tipo", "Precio", "Acciones"]
     new_product: dict = {}
 
     input_search: str
@@ -36,7 +36,7 @@ class ProductView(rx.State):
     @rx.event
     async def insert_product_controller(self, form_data: dict):
         try:
-            new_product = create_product(id="", name=form_data['name'], description=form_data['description'], product_type=form_data['product_type'])
+            new_product = create_product(id="", name=form_data['name'], description=form_data['description'], product_type=form_data['product_type'], price=form_data['price'])
             yield ProductView.load_products()
             self.set()
         except BaseException as e:
@@ -93,7 +93,10 @@ def create_product_form() -> rx.Component:
                     name='product_type'
                 ),
             ),
-            rx.text_area(placeholder='Descripción', description='description', name='description'),
+            rx.hstack(
+                rx.input(placeholder='Precio', name='price', width="100%"),
+                rx.text_area(placeholder='Descripción', description='description', name='description'),
+            ),
             rx.dialog.close(
                 rx.button(
                     'Guardar',
@@ -160,10 +163,10 @@ def get_table_header():
 
 def get_table_body(product: Product):
     return rx.table.row(
-        rx.table.cell(product.id),
         rx.table.cell(product.name),
         rx.table.cell(product.description),
         rx.table.cell(product.product_type),
+        rx.table.cell(product.price),
         rx.table.cell(
             rx.hstack(
                 rx.button(
