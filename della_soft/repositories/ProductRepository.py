@@ -33,3 +33,13 @@ def get_by_id(id: int):
     with Session(engine) as session:
         query = select(Product).where(Product.id == id)
         return session.exec(query).all()
+    
+def delete_product(id: int):
+    engine = connect()
+    with Session(engine) as session:
+        query = select(Product).where(Product.id == id)
+        customer = session.exec(query).first()
+        user_delete = session.exec(query).one()
+        session.delete(user_delete)
+        session.commit()
+        return session.exec(query).all()
