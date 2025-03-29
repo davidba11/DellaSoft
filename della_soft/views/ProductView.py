@@ -5,7 +5,7 @@ from rxconfig import config
 
 from typing import Any, List
 
-from ..services.ProductService import select_all_product_service, create_product, get_product, delete_product_service
+from ..services.ProductService import select_all_product_service, create_product, select_product, delete_product_service
 
 from ..models.ProductModel import Product
 
@@ -46,7 +46,7 @@ class ProductView(rx.State):
         self.input_search = value
 
     def get_product(self):
-        self.data = get_product(self.input_search)
+        self.data = select_product(self.input_search)
 
     @rx.event
     async def delete_product_by_id(self, id):

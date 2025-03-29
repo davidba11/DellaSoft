@@ -14,7 +14,7 @@ class MenuView(rx.State):
         if(screen=="products_view"):
             yield ProductView.load_products()
         if(screen=="orders_view"):
-            yield ProductView.load_products()    
+            yield OrderView.load_orders()    
         self.screen=screen
         self.set()
 
