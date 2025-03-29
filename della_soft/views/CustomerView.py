@@ -50,8 +50,6 @@ class CustomerView(rx.State):
     def page_number(self) -> int:
         return (self.offset // self.limit) + 1
 
-    #num_total_pages = (total_items + limit - 1) // limit  # Corrige el cálculo
-
     async def get_customer_by_parameter(self):
         self.customers = select_by_parameter_service(self)
 
@@ -77,84 +75,119 @@ class CustomerView(rx.State):
     async def delete_user_by_id(self, id):
         self.customers = delete_customer_service(id)
         await self.load_customers()
-        
+
+def get_title():
+    return rx.text(
+        "Clientes",
+        size="7",
+        weight="bold",
+        color="#3E2723",
+        high_contrast=True,
+        fontFamily="DejaVu Sans Mono",
+        width="80%",
+    ),
     
 
 @rx.page(on_load=CustomerView.load_customers)
 def customers() -> rx.Component:
-    return rx.flex(
-        rx.heading('Clientes', align='center'),
-        rx.hstack(
-            search_user_component(), 
-            create_user_dialog_component(),
-            justify='center',
-            style={"margin-top": "auto"}
+    return rx.box(
+        rx.vstack(
+            get_title(),
+            main_actions_form(),
+            rx.table.root(
+                rx.table.header(
+                    get_table_header(),
+                ),
+                rx.table.body(
+                    (rx.foreach(CustomerView.customers, get_table_body))
+                ),
+                width="80vw",
+                background_color="#FFF8E1",
+                border_radius="20px",
+            ),
+            pagination_controls(),
+            spacing="5",  # Espaciado entre elementos
+            align="center",
+            width="80vw",
         ),
-        table_customer(CustomerView.customers),
-        pagination_controls(),
-        direction='column',
-        style = {"width": "60vw", "margin": "auto"}
-
         
-         
-
+        display="flex",
+        justifyContent="center",
+        alignItems="flex-start",
+        text_align="center",
+        background_color="#FDEFEA",
+        width="92vw",
+        height="80vh",
+        
     )
 
-def table_customer(list_customer: list[Customer]) -> rx.Component:
-    return rx.table.root(
-        rx.table.header(
-            rx.table.row(
-                rx.table.column_header_cell('Cedula'),
-                rx.table.column_header_cell('Nombre'),
-                rx.table.column_header_cell('Apellido'),	
-                rx.table.column_header_cell('Contacto'),	
-                rx.table.column_header_cell('Div'),
-                rx.table.column_header_cell('Accion') 
-            )
-        ),
-        rx.table.body(
-            rx.foreach(list_customer, row_table)
-        )
+def get_table_header():
+    return rx.table.row(
+        rx.table.column_header_cell('Cedula'),
+        rx.table.column_header_cell('Nombre'),
+        rx.table.column_header_cell('Apellido'),	
+        rx.table.column_header_cell('Contacto'),	
+        rx.table.column_header_cell('Div'),
+        rx.table.column_header_cell('Accion'), 
+        background_color="#A67B5B",
     )
 
-def row_table (customer: Customer) -> rx.Component:  
+def get_table_body(customer: Customer):
     return rx.table.row(
         rx.table.cell(customer.id),
         rx.table.cell(customer.first_name),
         rx.table.cell(customer.last_name),
         rx.table.cell(customer.contact),
         rx.table.cell(customer.div),
-        rx.table.cell(rx.hstack(
-            #rx.button('Editar'),
-            delete_user_dialog_component(customer.id)
-            ))
-                    
-            )
+        rx.table.cell(
+            rx.hstack(
+                    delete_user_dialog_component(customer.id),
+                ),
+            ),
+            color="#3E2723",
+        ),
+        
 
-def search_user_component () ->rx.Component:
+def search_customer_component () ->rx.Component:
     return rx.hstack(
-        rx.input(placeholder='Buscar cliente', on_change=CustomerView.search_on_change),
-        rx.button('Buscar', on_click=CustomerView.get_customer_by_parameter)
+        rx.input(placeholder='Buscar cliente', background_color="#3E2723",  placeholder_color="white", color="white", on_change=CustomerView.search_on_change),
+        rx.button( rx.icon("search", size=22),
+            rx.text("Buscar", size="3"),
+            background_color="#3E2723",
+            size="2",
+            variant="solid", on_click=CustomerView.get_customer_by_parameter)
     )
 
 def create_customer_form() -> rx.Component:
     return rx.form(
         rx.vstack(
-            rx.input(placeholder='Cedula', id='id'),
-            rx.input(placeholder='Nombre', name='first_name'),
-            rx.input(placeholder='Apellido', name='last_name'),
-            rx.input(placeholder='Contacto', name='contact'),
-            rx.input(placeholder='Div', name='div'),
-            rx.dialog.close(rx.button('Guardar', type='submit')),
+            rx.input(placeholder='Cedula', id='id', background_color="#3E2723",  placeholder_color="white", color="white"),
+            rx.input(placeholder='Nombre', name='first_name', background_color="#3E2723",  placeholder_color="white", color="white"),
+            rx.input(placeholder='Apellido', name='last_name', background_color="#3E2723",  placeholder_color="white", color="white"),
+            rx.input(placeholder='Contacto', name='contact', background_color="#3E2723",  placeholder_color="white", color="white"),
+            rx.input(placeholder='Div', name='div', background_color="#3E2723",  placeholder_color="white", color="white"),
+            rx.dialog.close(rx.button('Guardar', background_color="#3E2723", type='submit')),
+            align='center',
+            justify='center', 
+            spacing="2",
             
     ),
+    align='center',
+    justify='center',
+    #direction='column',
+    border_radius="20px",
+    padding="20px",
     on_submit=CustomerView.create_customer,
      
     )
 
-def create_user_dialog_component() -> rx.Component:
+def create_customer_dialog_component() -> rx.Component:
     return rx.dialog.root(
-        rx.dialog.trigger(rx.button('Crear Cliente')),
+        rx.dialog.trigger(rx.button(rx.icon("user", size=22),
+                rx.text("Crear", size="3"),
+                background_color="#3E2723",
+                size="2",
+                variant="solid",)),
         rx.dialog.content(
             rx.flex(
                 rx.dialog.title('Crear Cliente'),
@@ -162,6 +195,8 @@ def create_user_dialog_component() -> rx.Component:
                 justify='center',
                 align='center',
                 direction='column',
+                weight="bold",
+                color="#3E2723"
             ),
             rx.flex(
                 rx.dialog.close(
@@ -171,17 +206,29 @@ def create_user_dialog_component() -> rx.Component:
                 margin_top="16px",
                 justify="end",
             ),
-            style={"width": "300px"}
+            background_color="#A67B5B",
         ),
-        
+        style={"width": "300px"}
     )
+
+def main_actions_form():
+    return rx.hstack(
+        search_customer_component(), 
+        create_customer_dialog_component(),
+        justify='center',
+        style={"margin-top": "auto"}
+    ),
 
 def pagination_controls() -> rx.Component:
     return rx.hstack(
         rx.button(
             "Anterior",
             on_click=CustomerView.prev_page,
-            is_disabled=CustomerView.offset <= 0
+            is_disabled=CustomerView.offset <= 0,
+            background_color="#3E2723",
+            size="2",
+            variant="solid"
+
         ),
         rx.text(  
             CustomerView.current_page, " de ", CustomerView.num_total_pages
@@ -189,14 +236,20 @@ def pagination_controls() -> rx.Component:
         rx.button(
             "Siguiente",
             on_click=CustomerView.next_page,
-            is_disabled=CustomerView.offset + CustomerView.limit >= CustomerView.total_items
+            is_disabled=CustomerView.offset + CustomerView.limit >= CustomerView.total_items,
+            background_color="#3E2723",
+            size="2",
+            variant="solid"
         ),
         justify="center"
     )
 
 def delete_user_dialog_component(id: int) -> rx.Component:
     return rx.dialog.root(
-        rx.dialog.trigger(rx.button(rx.icon('trash-2'))),
+        rx.dialog.trigger(rx.button(rx.icon("trash", size=22),
+                    background_color="#3E2723",
+                    size="2",
+                    variant="solid",)),
         rx.dialog.content(
             rx.dialog.title('Eliminar Cliente'),
             rx.dialog.description('¿Está seguro que desea eliminar este cliente?'),
@@ -205,7 +258,9 @@ def delete_user_dialog_component(id: int) -> rx.Component:
                     rx.button('Cancelar', color_scheme='gray', variant='soft')
                 ),
                 rx.dialog.close(
-                    rx.button('Confirmar', on_click=CustomerView.delete_user_by_id(id))
+                    rx.button('Confirmar', on_click=CustomerView.delete_user_by_id(id), background_color="#3E2723",
+                size="2",
+                variant="solid")
                 ),
                 spacing="3",
                 margin_top="16px",
