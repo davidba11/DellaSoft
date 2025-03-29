@@ -58,14 +58,6 @@ def get_total_items():
         return session.exec(select(func.count(Customer.id))).one()
 
 def get_customer_section(offset: int, limit: int):
-    #offset, limit = get_offset_limit()
-    engine = connect()
-    with Session(engine) as session:
-        #query= select(Customer)
-        query = select(Customer).offset(offset).limit(limit)
-        return session.exec(query).all()
-
-def get_customer_section(offset: int, limit: int):
     """Obtiene una lista de clientes con paginación usando OFFSET y LIMIT."""
     engine = connect()
     with Session(engine) as session:
