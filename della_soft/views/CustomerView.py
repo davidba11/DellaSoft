@@ -8,9 +8,7 @@ from typing import Any, List, Dict
 
 from ..models.CustomerModel import Customer
 
-from ..services.CustomerService import select_all_customer_service, select_by_parameter_service,create_customer_service, delete_customer_service, select_by_id_service, get_total_items_service, get_customer_section_service
-
-
+from ..services.CustomerService import select_all_customer_service, select_by_parameter_service, create_customer_service, delete_customer_service, select_by_id_service, get_total_items_service
 
 import asyncio
 
@@ -18,42 +16,45 @@ class CustomerView(rx.State):
     customers:list[Customer]
     customer_search: str
     error_message: str = '' 
-    total_items: int
     offset: int = 0
-    limit: int = 3
-
-    @rx.var(cache=True)
-    def page_number(self) -> int:
-        return (
-            (self.offset // self.limit)
-            + 1
-            + (1 if self.offset % self.limit else 0)
-        )
-
-    @rx.var(cache=True)
-    def total_pages(self) -> int:
-        return self.total_items // self.limit + (
-            1 if self.total_items % self.limit else 0
-        )
+    limit: int = 5  # Número de clientes por página
+    total_items: int = 0  # Total de clientes
     
-    @rx.event
-    def prev_page(self):
-        self.offset = max(self.offset - self.limit, 0)
-        self.get_customer_section()
-    
-    @rx.event
-    def next_page(self):
+
+    async def load_customers(self):
+        """Carga clientes con paginación."""
+        all_customers = select_all_customer_service()
+        self.total_items = len(all_customers)  # Cuenta el total de clientes
+        self.customers = all_customers[self.offset : self.offset + self.limit]  # Aplica paginación
+
+    async def next_page(self):
+        """Pasa a la siguiente página si hay más clientes."""
         if self.offset + self.limit < self.total_items:
             self.offset += self.limit
-        self.get_customer_section()
-    
+            await self.load_customers()
 
-    
-    async def get_all_customers(self):
-        self.customers = select_all_customer_service()
+    async def prev_page(self):
+        """Vuelve a la página anterior."""
+        if self.offset > 0:
+            self.offset -= self.limit
+            await self.load_customers()
 
-    def load_customers(self):
-        asyncio.create_task(self.get_all_customers())
+    @rx.var
+    def num_total_pages(self) -> int:
+        return max((self.total_items + self.limit - 1) // self.limit, 1)
+
+    @rx.var
+    def current_page(self) -> int:
+        return (self.offset // self.limit) + 1
+    
+    def page_number(self) -> int:
+        return (self.offset // self.limit) + 1
+
+    #num_total_pages = (total_items + limit - 1) // limit  # Corrige el cálculo
+
+    async def get_customer_by_parameter(self):
+        self.customers = select_by_parameter_service(self)
+
 
     def get_customer_by_parameter(self):
         self.customers = select_by_parameter_service(self.customer_search)
@@ -61,16 +62,11 @@ class CustomerView(rx.State):
     def search_on_change(self, value: str):
         self.customer_search = value
 
-    def total_items(self):
-        self.total_items = get_total_items_service()
-    
-    def get_customer_section(self):
-        self.customers = get_customer_section_service(self.offset, self.limit)
 
     async def create_customer(self, data: dict):
         try:
             new_customer = create_customer_service(id=data['id'], first_name=data['first_name'], last_name=data['last_name'], contact=data['contact'], div=data['div'])
-            self.get_customer_section()
+            await self.load_customers()
             #self.customers = self.customers + [new_customer]
             yield
             self.error_message = ""
@@ -80,7 +76,7 @@ class CustomerView(rx.State):
             
     async def delete_user_by_id(self, id):
         self.customers = delete_customer_service(id)
-        await self.get_customer_section()
+        await self.load_customers()
         
     
 
@@ -95,6 +91,7 @@ def customers() -> rx.Component:
             style={"margin-top": "auto"}
         ),
         table_customer(CustomerView.customers),
+        pagination_controls(),
         direction='column',
         style = {"width": "60vw", "margin": "auto"}
 
@@ -104,21 +101,7 @@ def customers() -> rx.Component:
     )
 
 def table_customer(list_customer: list[Customer]) -> rx.Component:
-        return rx.vstack(
-        rx.hstack(
-            rx.button(
-                "Prev",
-                on_click=CustomerView.prev_page,
-            ),
-            rx.text(
-                f"Page {CustomerView.page_number} / {CustomerView.total_pages}"
-            ),
-            rx.button(
-                "Next",
-                on_click=CustomerView.next_page,
-            ),
-        ),
-        rx.table.root(
+    return rx.table.root(
         rx.table.header(
             rx.table.row(
                 rx.table.column_header_cell('Cedula'),
@@ -127,13 +110,12 @@ def table_customer(list_customer: list[Customer]) -> rx.Component:
                 rx.table.column_header_cell('Contacto'),	
                 rx.table.column_header_cell('Div'),
                 rx.table.column_header_cell('Accion') 
-            ),
+            )
         ),
         rx.table.body(
             rx.foreach(list_customer, row_table)
         )
     )
-        )
 
 def row_table (customer: Customer) -> rx.Component:  
     return rx.table.row(
@@ -193,6 +175,25 @@ def create_user_dialog_component() -> rx.Component:
         ),
         
     )
+
+def pagination_controls() -> rx.Component:
+    return rx.hstack(
+        rx.button(
+            "Anterior",
+            on_click=CustomerView.prev_page,
+            is_disabled=CustomerView.offset <= 0
+        ),
+        rx.text(  
+            CustomerView.current_page, " de ", CustomerView.num_total_pages
+        ),
+        rx.button(
+            "Siguiente",
+            on_click=CustomerView.next_page,
+            is_disabled=CustomerView.offset + CustomerView.limit >= CustomerView.total_items
+        ),
+        justify="center"
+    )
+
 def delete_user_dialog_component(id: int) -> rx.Component:
     return rx.dialog.root(
         rx.dialog.trigger(rx.button(rx.icon('trash-2'))),
@@ -210,7 +211,7 @@ def delete_user_dialog_component(id: int) -> rx.Component:
                 margin_top="16px",
                 justify="end",
             ),
-            style={"width": "300px"}
+            #style={"width": "300px"}
         ),
         
     )
