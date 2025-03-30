@@ -1,5 +1,7 @@
 from ..repositories.OrderRepository import select_all, get_order, insert_order
 
+from .CustomerService import select_by_id_service
+
 from datetime import datetime
 
 from ..models.OrderModel import Order
@@ -7,7 +9,6 @@ from ..models.OrderModel import Order
 
 async def select_all_order_service():
     orders = select_all()
-    #print (orders)
     return orders
 
 def select_order(value: str):
