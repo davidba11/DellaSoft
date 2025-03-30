@@ -214,13 +214,7 @@ def get_table_body(product: Product):
         rx.table.cell(product.price),
         rx.table.cell(
             rx.hstack(
-                rx.button(
-                    rx.icon("trash", size=22),
-                    background_color="#3E2723",
-                    size="2",
-                    variant="solid",
-                    on_click=ProductView.delete_product_by_id(product.id)
-                ),
+               delete_product_dialog_component(product.id)
             ),
         ),
         color="#3E2723",
@@ -280,4 +274,30 @@ def pagination_controls() -> rx.Component:
             variant="solid"
         ),
         justify="center"
+    )
+def delete_product_dialog_component(id: int) -> rx.Component:
+    return rx.dialog.root(
+        rx.dialog.trigger(rx.button(rx.icon("trash", size=22),
+                    background_color="#3E2723",
+                    size="2",
+                    variant="solid",)),
+        rx.dialog.content(
+            rx.dialog.title('Eliminar Producto'),
+            rx.dialog.description('¿Está seguro que desea eliminar este producto?'),
+            rx.flex(
+                rx.dialog.close(
+                    rx.button('Cancelar', color_scheme='gray', variant='soft')
+                ),
+                rx.dialog.close(
+                    rx.button('Confirmar', on_click=ProductView.delete_product_by_id(id), background_color="#3E2723",
+                size="2",
+                variant="solid")
+                ),
+                spacing="3",
+                margin_top="16px",
+                justify="end",
+            ),
+            #style={"width": "300px"}
+        ),
+        
     )
