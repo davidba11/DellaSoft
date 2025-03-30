@@ -20,7 +20,7 @@ def insert_product_order(product_order: ProductOrder):
     with Session(engine) as session:
         session.add(product_order)
         session.commit()
-        query = select(product_order)
+        query = select(product_order).where(ProductOrder.id_order == product_order.id_order)
         return session.exec(query).all()
 
 def delete_product_order(id: int):
