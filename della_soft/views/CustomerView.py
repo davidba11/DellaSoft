@@ -13,7 +13,7 @@ from ..services.CustomerService import select_all_customer_service, select_by_pa
 import asyncio
 
 class CustomerView(rx.State):
-    customers:list[Customer]
+    customers: list[Customer]
     customer_search: str
     error_message: str = '' 
     offset: int = 0
@@ -23,9 +23,9 @@ class CustomerView(rx.State):
 
     async def load_customers(self):
         """Carga clientes con paginación."""
-        all_customers = select_all_customer_service()
-        self.total_items = len(all_customers)  # Cuenta el total de clientes
-        self.customers = all_customers[self.offset : self.offset + self.limit]  # Aplica paginación
+        self.customers = select_all_customer_service()
+        self.total_items = len(self.customers)  # Cuenta el total de clientes
+        self.customers = self.customers[self.offset : self.offset + self.limit]  # Aplica paginación
 
     async def next_page(self):
         """Pasa a la siguiente página si hay más clientes."""

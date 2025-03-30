@@ -17,21 +17,51 @@ class ProductView(rx.State):
     input_search: str
     value: str = "Precio Por Kilo"
 
+    offset: int = 0
+    limit: int = 5  # Número de productos por página
+    total_items: int = 0  # Total de productos
+
     @rx.event
     def change_value(self, value: str):
         self.value = value
 
-    async def get_all_products(self):
+    
+    '''async def get_all_products(self):
         data = await select_all_product_service()
         #print("Datos desde la BD:", data)
-        return data
+        return data'''
 
-    @rx.event
+    #@rx.event
     async def load_products(self):
-        self.data = await self.get_all_products()
+        self.data = await select_all_product_service()
+        self.total_items = len(self.data)
+        self.data = self.data [self.offset : self.offset + self.limit]
         #print("Productos obtenidos:", self.data)
-        yield
-        self.set()
+        #yield
+        #self.set()
+
+    async def next_page(self):
+        """Pasa a la siguiente página si hay más productos."""
+        if self.offset + self.limit < self.total_items:
+            self.offset += self.limit
+            await self.load_products()
+
+    async def prev_page(self):
+        """Vuelve a la página anterior."""
+        if self.offset > 0:
+            self.offset -= self.limit
+            await self.load_products()
+
+    @rx.var
+    def num_total_pages(self) -> int:
+        return max((self.total_items + self.limit - 1) // self.limit, 1)
+
+    @rx.var
+    def current_page(self) -> int:
+        return (self.offset // self.limit) + 1
+    
+    def page_number(self) -> int:
+        return (self.offset // self.limit) + 1
 
     @rx.event
     async def insert_product_controller(self, form_data: dict):
@@ -51,7 +81,7 @@ class ProductView(rx.State):
     @rx.event
     async def delete_product_by_id(self, id):
         self.data = delete_product_service(id)
-        yield ProductView.load_products()
+        await self.load_products()
 
 def get_title():
     return rx.text(
@@ -68,7 +98,9 @@ def search_product_component () ->rx.Component:
     return rx.hstack(
         rx.input(
             placeholder='Buscar Producto',
-            background_color="#3E2723",
+            background_color="#3E2723", 
+            placeholder_color="white", 
+            color="white",
             on_change=ProductView.load_product_information,
         ),
         rx.button(
@@ -85,25 +117,38 @@ def create_product_form() -> rx.Component:
     return rx.form(
         rx.vstack(
             rx.hstack(
-                rx.input(placeholder='Nombre', name='name', width="100%"),
+                rx.input(placeholder='Nombre', name='name', width="100%", background_color="#3E2723", color="white"),
                 rx.select(
                     ["Precio Por Kilo", "Precio Fijo"],
                     value=ProductView.value,
                     on_change=ProductView.change_value,
-                    name='product_type'
+                    name='product_type', background_color="#3E2723",  placeholder_color="white", color="white"
                 ),
+                align='center',
+                justify='center', 
+                spacing="2",
             ),
             rx.hstack(
-                rx.input(placeholder='Precio', name='price', width="100%"),
-                rx.text_area(placeholder='Descripción', description='description', name='description'),
+                rx.input(placeholder='Precio', 
+                name='price', width="100%",background_color="#3E2723",  placeholder_color="white", color="white"),
+                rx.text_area(placeholder='Descripción', description='description', name='description', background_color="#3E2723",  placeholder_color="white", color="white"),
+                align='center',
+                justify='center', 
+                spacing="2",
             ),
+            
             rx.dialog.close(
                 rx.button(
                     'Guardar',
+                    background_color="#3E2723",
                     type='submit',
                 ),
             ),   
         ),
+         align='center',
+        justify='center',
+        border_radius="20px",
+        padding="20px",
         on_submit=lambda form_data: ProductView.insert_product_controller(form_data),
         debug=True,
     )
@@ -198,6 +243,7 @@ def products() -> rx.Component:
                 background_color="#FFF8E1",
                 border_radius="20px",
             ),
+            pagination_controls(),
             spacing="5",  # Espaciado entre elementos
             align="center",
             width="80vw",
@@ -209,4 +255,29 @@ def products() -> rx.Component:
         background_color="#FDEFEA",
         width="92vw",
         height="80vh",
+    )
+
+def pagination_controls() -> rx.Component:
+    return rx.hstack(
+        rx.button(
+            "Anterior",
+            on_click=ProductView.prev_page,
+            is_disabled=ProductView.offset <= 0,
+            background_color="#3E2723",
+            size="2",
+            variant="solid"
+
+        ),
+        rx.text(  
+            ProductView.current_page, " de ", ProductView.num_total_pages
+        ),
+        rx.button(
+            "Siguiente",
+            on_click=ProductView.next_page,
+            is_disabled=ProductView.offset + ProductView.limit >= ProductView.total_items,
+            background_color="#3E2723",
+            size="2",
+            variant="solid"
+        ),
+        justify="center"
     )
