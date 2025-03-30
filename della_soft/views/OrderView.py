@@ -7,6 +7,7 @@ from rxconfig import config
 from typing import Any, List
 
 from ..services.OrderService import select_all_order_service, select_order, create_order
+from ..services.CustomerService import select_name_by_id
 
 from ..models.OrderModel import Order
 
@@ -20,7 +21,6 @@ class OrderView(rx.State):
 
     async def get_all_orders(self):
         data = await select_all_order_service()
-        #print("Datos desde la BD:", data)
         return data
 
     @rx.event
@@ -43,6 +43,14 @@ class OrderView(rx.State):
             self.set()
         except BaseException as e:
             print(e.args)
+
+def get_name(id_customer: int):
+    print(id_customer)
+    try:
+        print(id_customer)
+        return select_name_by_id(int(id_customer))
+    except (ValueError, TypeError):
+        return "ID inválido"
 
 def get_title():
     return rx.text(
@@ -85,7 +93,7 @@ def create_order_form() -> rx.Component:
             ),
             rx.hstack(
                 rx.input(placeholder='Fecha de Ingreso', name='order_date', width="100%"),
-                rx.input(placeholder='Fecha de Entrega', name='order_delivery', width="100%"),
+                rx.input(placeholder='Fecha de Entrega', name='delivery_date', width="100%"),
             ),
             rx.dialog.close(
                 rx.button(
@@ -151,8 +159,9 @@ def get_table_header():
     ),
 
 def get_table_body(order: Order):
+    customer_name = get_name(order.id_customer)
     return rx.table.row(
-        rx.table.cell(order.id_customer),
+        rx.table.cell(customer_name),
         rx.table.cell(order.order_date),
         rx.table.cell(order.delivery_date),
         rx.table.cell(

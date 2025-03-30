@@ -12,7 +12,11 @@ def select_by_parameter_service(value: str):
     return select_all()  # Si está vacío, devuelve todos los registros
 
 def select_by_id_service(id: int):
-    return select_by_id(id)    
+    return select_by_id(id)
+
+def select_name_by_id(id: int):
+    customer = select_by_id(id)
+    return customer[0].first_name + " "+ customer[0].last_name
 
 def create_customer_service(id: int, first_name: str, last_name: str, contact: str, div: int):
     customer = select_by_id(id)
