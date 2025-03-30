@@ -17,7 +17,7 @@ def insert_product(product: Product):
         query = select(Product)
         return session.exec(query).all()
     
-def get_product(value: str):
+async def get_product(value: str):
     engine = connect()
     with Session(engine) as session:
         query = select(Product).where(

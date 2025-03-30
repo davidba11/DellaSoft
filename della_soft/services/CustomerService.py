@@ -1,12 +1,12 @@
 from ..repositories.CustomerRepository import select_all, select_by_parameter, create_customer, select_by_id, delete_customer, get_total_items, get_customer_section
 from ..models.CustomerModel import Customer
 
-def select_all_customer_service():
+async def select_all_customer_service():
     customers = select_all()
-    print (customers)
+    #print (customers)
     return customers
 
-def select_by_parameter_service(value: str):
+async def select_by_parameter_service(value: str):
     if value.strip():  # Verifica que no esté vacío
         return select_by_parameter(value)  # Usa la nueva función que busca en nombre, apellido e ID
     return select_all()  # Si está vacío, devuelve todos los registros

@@ -23,9 +23,10 @@ class CustomerView(rx.State):
 
     async def load_customers(self):
         """Carga clientes con paginación."""
-        self.customers = select_all_customer_service()
+        self.customers = await select_all_customer_service()
         self.total_items = len(self.customers)  # Cuenta el total de clientes
         self.customers = self.customers[self.offset : self.offset + self.limit]  # Aplica paginación
+        self.set()
 
     async def next_page(self):
         """Pasa a la siguiente página si hay más clientes."""
@@ -54,11 +55,18 @@ class CustomerView(rx.State):
         self.customers = select_by_parameter_service(self)
 
 
-    def get_customer_by_parameter(self):
-        self.customers = select_by_parameter_service(self.customer_search)
+    async def get_customer_by_parameter(self):
+        """Busca clientes por nombre y aplica paginación correctamente."""
+        self.customers = await select_by_parameter_service(self.customer_search)  # 🔍 Filtra clientes
+        self.total_items = len(self.customers)  # ✅ Guarda total de clientes filtrados
+        self.offset = 0  # ✅ Reinicia a la primera página
+        self.customers = self.customers[self.offset : self.offset + self.limit]  # ✅ Aplica paginación
+        self.set()
     
-    def search_on_change(self, value: str):
+    async def search_on_change(self, value: str):
         self.customer_search = value
+        await self.get_customer_by_parameter()
+
 
 
     async def create_customer(self, data: dict):
