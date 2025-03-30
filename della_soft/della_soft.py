@@ -6,6 +6,7 @@ from della_soft.views import Menu
 from della_soft.views import CustomerView
 from della_soft.views import ProductView
 from della_soft.views import OrderView
+from della_soft.views import OrderDetailView
 
 #FrontEnd
 def index():
@@ -18,3 +19,4 @@ app.add_page(index)
 app.add_page(CustomerView.customers, route="/customers", title='Clientes')  
 app.add_page(ProductView.products, route="/products", title='Productos')
 app.add_page(OrderView.orders, route="/orders")
+app.add_page(OrderDetailView.products, route="/detail")

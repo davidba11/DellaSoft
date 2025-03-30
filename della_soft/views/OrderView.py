@@ -1,27 +1,41 @@
-import asyncio
-
 import reflex as rx
-
-from rxconfig import config
 
 from typing import Any, List
 
 from ..services.OrderService import select_all_order_service, select_order, create_order
 from ..services.CustomerService import select_name_by_id
+from ..services.SystemService import get_sys_date_to_string
+
+from datetime import datetime
 
 from ..models.OrderModel import Order
 
 class OrderView(rx.State):
 
-    data: list[Order]
+    data: list[dict]
     columns: List[str] = ["Cliente", "Fecha de Ingreso", "Fecha de Entrega", "Acciones"]
     new_order: dict = {}
+
+    sys_date: str
 
     input_search: str
 
     async def get_all_orders(self):
-        data = await select_all_order_service()
-        return data
+        orders = await select_all_order_service()  # Obtiene la lista de objetos Order
+        orders_with_names = []  # Lista para almacenar los pedidos con los nombres
+        for order in orders:
+            orders_with_names.append({
+                "id": order.id,
+                "id_customer": order.id_customer,
+                "customer_name": select_name_by_id(order.id_customer),  # Accede con punto (.)
+                "observation": order.observation,
+                "total_order": order.total_order,
+                "total_paid": order.total_paid,
+                "order_date": order.order_date,
+                "delivery_date": order.delivery_date
+            })
+
+        return orders_with_names  # Devuelve la lista de diccionarios en lugar de objetos Order
 
     @rx.event
     async def load_orders(self):
@@ -38,19 +52,15 @@ class OrderView(rx.State):
     @rx.event
     async def insert_order_controller(self, form_data: dict):
         try:
+            print(form_data)
             new_order = create_order(id="", id_customer=form_data['id_customer'], observation=form_data['observation'], total_order=form_data['total_order'], total_paid=form_data['total_paid'], order_date=form_data['order_date'], delivery_date=form_data['delivery_date'])
             yield OrderView.load_orders()
             self.set()
         except BaseException as e:
             print(e.args)
 
-def get_name(id_customer: int):
-    print(id_customer)
-    try:
-        print(id_customer)
-        return select_name_by_id(int(id_customer))
-    except (ValueError, TypeError):
-        return "ID inválido"
+    def get_system_date(self):
+        self.sys_date = get_sys_date_to_string()
 
 def get_title():
     return rx.text(
@@ -92,8 +102,15 @@ def create_order_form() -> rx.Component:
                 rx.input(placeholder='Total Pagado', name='total_paid', width="100%"),
             ),
             rx.hstack(
-                rx.input(placeholder='Fecha de Ingreso', name='order_date', width="100%"),
-                rx.input(placeholder='Fecha de Entrega', name='delivery_date', width="100%"),
+                rx.input(
+                    #value=OrderView.sys_date,
+                    placeholder='Fecha de Ingreso',
+                    name='order_date',
+                    width="100%",
+                    #disabled=True,
+                    type='datetime-local',
+                ),
+                rx.input(placeholder='Fecha de Entrega', name='delivery_date', width="100%", type='datetime-local'),
             ),
             rx.dialog.close(
                 rx.button(
@@ -115,6 +132,7 @@ def create_order_modal() -> rx.Component:
                 background_color="#3E2723",
                 size="2",
                 variant="solid",
+                on_click=lambda: OrderView.get_system_date
             )
         ),
         rx.dialog.content(
@@ -158,10 +176,9 @@ def get_table_header():
         background_color="#A67B5B",
     ),
 
-def get_table_body(order: Order):
-    customer_name = get_name(order.id_customer)
+def get_table_body(order: dict):
     return rx.table.row(
-        rx.table.cell(customer_name),
+         rx.table.cell(rx.text(order["customer_name"])),
         rx.table.cell(order.order_date),
         rx.table.cell(order.delivery_date),
         rx.table.cell(
