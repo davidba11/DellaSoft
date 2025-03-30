@@ -6,6 +6,8 @@ from .ProductView import ProductView, products
 
 from .OrderView import OrderView, orders
 
+from .CustomerView import CustomerView, customers
+
 class MenuView(rx.State):
     screen: str = "orders_view"
 
@@ -14,7 +16,9 @@ class MenuView(rx.State):
         if(screen=="products_view"):
             yield ProductView.load_products()
         if(screen=="orders_view"):
-            yield OrderView.load_orders()    
+            yield OrderView.load_orders()
+        if(screen=="customes_view"):
+            yield CustomerView.load_customers()  
         self.screen=screen
         self.set()
 
@@ -35,7 +39,7 @@ def get_title():
 def get_menu():
     return rx.vstack(
         rx.icon("notebook-pen", color="#3E2723", size=40, on_click=lambda: MenuView.display_screen("orders_view")),
-        rx.icon("user",color="#3E2723", size=40, on_click=lambda: MenuView.display_screen("customers")),
+        rx.icon("user",color="#3E2723", size=40, on_click=lambda: MenuView.display_screen("customers_view")),
         rx.icon("cake",color="#3E2723", size=40, on_click=lambda: MenuView.display_screen("products_view")),
         rx.icon("settings", color="#3E2723", size=40, on_click=lambda: MenuView.display_screen("users")),
         rx.spacer(),
@@ -50,15 +54,20 @@ def menu() -> rx.Component:
             get_menu(),
             rx.container(
                 rx.cond(
-                    MenuView.screen=="products_view",
+                    MenuView.screen == "products_view",
                     products(),
                     rx.cond(
-                        MenuView.screen=="orders_view",
-                        orders()
-                    ),
+                        MenuView.screen == "orders_view",
+                        orders(),
+                        rx.cond(
+                            MenuView.screen == "customers_view",
+                            customers(),
+                            rx.text("Seleccione una opción del menú")  # Valor por defecto
+                        )
+                    )
                 ),
             ),
         ),
         height="100vh",
         background_color="#FDEFEA",
-    ),
+    )
