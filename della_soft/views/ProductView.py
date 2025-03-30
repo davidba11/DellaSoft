@@ -72,11 +72,16 @@ class ProductView(rx.State):
         except BaseException as e:
             print(e.args)
 
-    def load_product_information(self, value: str):
+    async def load_product_information(self, value: str):
         self.input_search = value
+        await self.get_product()
 
-    def get_product(self):
-        self.data = get_product(self.input_search)
+    async def get_product(self):
+        self.data = await get_product(self.input_search)
+        self.total_items = len(self.data)  # ✅ Guarda total de clientes filtrados
+        self.offset = 0  # ✅ Reinicia a la primera página
+        self.data = self.data[self.offset : self.offset + self.limit]  # ✅ Aplica paginación
+        self.set()
 
     @rx.event
     async def delete_product_by_id(self, id):

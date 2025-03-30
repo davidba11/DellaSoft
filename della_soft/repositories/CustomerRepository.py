@@ -1,12 +1,7 @@
 from ..models.CustomerModel import Customer
 from .ConnectDB import connect
 from sqlmodel import Session, select, or_, String, func
-#from ..views.CustomerView import offset, limit
-from typing import TYPE_CHECKING
 
-#def get_offset_limit():
-#    from ..views.CustomerView import offset, limit
- #   return offset, limit
  
 def select_all():
     engine = connect()
