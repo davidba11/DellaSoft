@@ -14,8 +14,10 @@ def get_order(value: str):
     with Session(engine) as session:
         query = select(Order).where(
             or_(
-                Order.id_customer.ilike(f"%{value}%"),  # Busca coincidencias parciales en nombre
-                Order.order_date.ilike(f"%{value}%"),   # Busca coincidencias parciales descripción
+                Order.observation.ilike(f"%{value}%"),
+                Order.total_order.ilike(f"%{value}%"),
+                Order.total_paid.ilike(f"%{value}%"),
+                Order.order_date.ilike(f"%{value}%"),
                 Order.delivery_date.ilike(f"%{value}%"),
             ))
         return session.exec(query).all()

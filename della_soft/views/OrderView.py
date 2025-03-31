@@ -6,6 +6,9 @@ from ..services.OrderService import select_all_order_service, select_order, crea
 from ..services.CustomerService import select_name_by_id
 from ..services.SystemService import get_sys_date_to_string
 
+#from .OrderDetailView import OrderDetailView, OrderDetails
+#from .OrderDetailView import product_order_page
+
 from datetime import datetime
 
 from ..models.OrderModel import Order
@@ -13,7 +16,7 @@ from ..models.OrderModel import Order
 class OrderView(rx.State):
 
     data: list[dict]
-    columns: List[str] = ["Cliente", "Fecha de Ingreso", "Fecha de Entrega", "Acciones"]
+    columns: List[str] = ["Cliente","Observación", "Total Pedido", "Total Pagado" ,"Fecha de Ingreso", "Fecha de Entrega", "Acciones"]
     new_order: dict = {}
 
     sys_date: str
@@ -52,7 +55,6 @@ class OrderView(rx.State):
     @rx.event
     async def insert_order_controller(self, form_data: dict):
         try:
-            print(form_data)
             new_order = create_order(id="", id_customer=form_data['id_customer'], observation=form_data['observation'], total_order=form_data['total_order'], total_paid=form_data['total_paid'], order_date=form_data['order_date'], delivery_date=form_data['delivery_date'])
             yield OrderView.load_orders()
             self.set()
@@ -112,10 +114,17 @@ def create_order_form() -> rx.Component:
                 ),
                 rx.input(placeholder='Fecha de Entrega', name='delivery_date', width="100%", type='datetime-local'),
             ),
+            rx.divider(),
+            rx.hstack(
+                #product_order_page(),
+            ),
             rx.dialog.close(
                 rx.button(
-                    'Guardar',
+                    rx.icon("save", size=22),
                     type='submit',
+                    background_color="#3E2723",
+                    size="2",
+                    variant="solid",
                 ),
             ),   
         ),
@@ -127,7 +136,7 @@ def create_order_modal() -> rx.Component:
     return rx.dialog.root(
         rx.dialog.trigger(
             rx.button(
-                rx.icon("cake", size=22),
+                rx.icon("plus", size=22),
                 rx.text("Crear", size="3"),
                 background_color="#3E2723",
                 size="2",
@@ -154,8 +163,9 @@ def create_order_modal() -> rx.Component:
                 justify="end",
             ),
             background_color="#A67B5B",
+            style={"max_width": "900px", "max_height": "600px", "justify" : "center", "align" : "center"}
         ),
-        style={"width": "300px"}
+        style={"max_width": "900px", "max_height": "300px"}
     )
 
 def main_actions_form():
@@ -172,13 +182,19 @@ def get_table_header():
         rx.table.column_header_cell(OrderView.columns[1]),
         rx.table.column_header_cell(OrderView.columns[2]),
         rx.table.column_header_cell(OrderView.columns[3]),
+        rx.table.column_header_cell(OrderView.columns[4]),
+        rx.table.column_header_cell(OrderView.columns[5]),
+        rx.table.column_header_cell(OrderView.columns[6]),
         color="#3E2723",
         background_color="#A67B5B",
     ),
 
 def get_table_body(order: dict):
     return rx.table.row(
-         rx.table.cell(rx.text(order["customer_name"])),
+        rx.table.cell(rx.text(order["customer_name"])),
+        rx.table.cell(order.observation),
+        rx.table.cell(order.total_order),
+        rx.table.cell(order.total_paid),
         rx.table.cell(order.order_date),
         rx.table.cell(order.delivery_date),
         rx.table.cell(
@@ -188,6 +204,7 @@ def get_table_body(order: dict):
                     background_color="#3E2723",
                     size="2",
                     variant="solid",
+                    disabled=True,
                     #on_click=OrderView.view_order_detail(order.id)
                 ),
             ),

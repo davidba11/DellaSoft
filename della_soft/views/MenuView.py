@@ -6,10 +6,17 @@ from .ProductView import ProductView, products
 
 from .OrderView import OrderView, orders
 
-from .CustomerView import CustomerView, customers
+from .CustomerView import customers 
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .CustomerView import CustomerView
 
 class MenuView(rx.State):
     screen: str = "orders_view"
+
+    customer_id: int = ""
 
     @rx.event
     def display_screen(self, screen: str):
@@ -19,8 +26,15 @@ class MenuView(rx.State):
             yield OrderView.load_orders()
         if(screen=="customes_view"):
             yield CustomerView.load_customers()  
+        if(screen=="order_detail"):
+            yield ProductView.load_products()
         self.screen=screen
         self.set()
+
+    def display_screen_by_customer(self, screen: str, id: int):
+        print(screen)
+        yield ProductView.load_products()
+        self.screen=screen
 
 def get_title():
     return rx.text(
@@ -62,7 +76,7 @@ def menu() -> rx.Component:
                         rx.cond(
                             MenuView.screen == "customers_view",
                             customers(),
-                            rx.text("Seleccione una opción del menú")  # Valor por defecto
+                            products()
                         )
                     )
                 ),

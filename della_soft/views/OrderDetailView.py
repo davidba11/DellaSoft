@@ -1,4 +1,4 @@
-import asyncio
+'''import asyncio
 import reflex as rx
 
 from rxconfig import config
@@ -10,55 +10,47 @@ from ..services.ProductService import select_all_product_service, create_product
 from ..models.ProductModel import Product
 
 class OrderDetailView(rx.State):
-    data: list[dict]
+    data: list[Product]
     columns: List[str] = ["Nombre", "Descripción", "Tipo", "Precio", "Acciones"]
-    new_product: dict = {}
+    new_OrderDetail: dict = {}
 
     input_search: str
     value: str = "Precio Por Kilo"
 
     offset: int = 0
-    limit: int = 5  # Número de productos por página
-    total_items: int = 0  # Total de productos
-
-    count: list[int] = 0
-
-    def increment(self):
-        self.count += 1
-
-    def decrement(self):
-        self.count -= 1
+    limit: int = 5  # Número de OrderDetailos por página
+    total_items: int = 0  # Total de OrderDetailos
 
     @rx.event
     def change_value(self, value: str):
         self.value = value
 
     
-    '''async def get_all_products(self):
-        data = await select_all_product_service()
+    #async def get_all_OrderDetails(self):
+        #data = await select_all_product_service()
         #print("Datos desde la BD:", data)
-        return data'''
+        #return data
 
     #@rx.event
-    async def load_products(self):
+    async def load_OrderDetails(self):
         self.data = await select_all_product_service()
         self.total_items = len(self.data)
         self.data = self.data [self.offset : self.offset + self.limit]
-        #print("Productos obtenidos:", self.data)
+        #print("OrderDetailos obtenidos:", self.data)
         #yield
         #self.set()
 
     async def next_page(self):
-        """Pasa a la siguiente página si hay más productos."""
+        """Pasa a la siguiente página si hay más OrderDetailos."""
         if self.offset + self.limit < self.total_items:
             self.offset += self.limit
-            await self.load_products()
+            await self.load_OrderDetails()
 
     async def prev_page(self):
         """Vuelve a la página anterior."""
         if self.offset > 0:
             self.offset -= self.limit
-            await self.load_products()
+            await self.load_OrderDetails()
 
     @rx.var
     def num_total_pages(self) -> int:
@@ -72,24 +64,29 @@ class OrderDetailView(rx.State):
         return (self.offset // self.limit) + 1
 
     @rx.event
-    async def insert_product_controller(self, form_data: dict):
+    async def insert_OrderDetail_controller(self, form_data: dict):
         try:
-            new_product = create_product(id="", name=form_data['name'], description=form_data['description'], product_type=form_data['product_type'], price=form_data['price'])
-            yield OrderDetailView.load_products()
+            new_OrderDetail = create_product(id="", name=form_data['name'], description=form_data['description'], product_type=form_data['product_type'], price=form_data['price'])
+            yield OrderDetailView.load_OrderDetails()
             self.set()
         except BaseException as e:
             print(e.args)
 
-    def load_product_information(self, value: str):
+    async def load_OrderDetail_information(self, value: str):
         self.input_search = value
+        await self.get_product()
 
-    def get_product(self):
-        self.data = get_product(self.input_search)
+    async def get_product(self):
+        self.data = await get_product(self.input_search)
+        self.total_items = len(self.data)  # ✅ Guarda total de clientes filtrados
+        self.offset = 0  # ✅ Reinicia a la primera página
+        self.data = self.data[self.offset : self.offset + self.limit]  # ✅ Aplica paginación
+        self.set()
 
     @rx.event
-    async def delete_product_by_id(self, id):
+    async def delete_OrderDetail_by_id(self, id):
         self.data = delete_product_service(id)
-        await self.load_products()
+        await self.load_OrderDetails()
 
 def get_title():
     return rx.text(
@@ -102,14 +99,14 @@ def get_title():
         width="80%",
     ),
 
-def search_product_component () ->rx.Component:
+def search_OrderDetail_component () ->rx.Component:
     return rx.hstack(
         rx.input(
-            placeholder='Buscar Producto',
+            placeholder='Buscar OrderDetailo',
             background_color="#3E2723", 
             placeholder_color="white", 
             color="white",
-            on_change=OrderDetailView.load_product_information,
+            on_change=OrderDetailView.load_OrderDetail_information,
         ),
         rx.button(
             rx.icon("search", size=22),
@@ -157,7 +154,7 @@ def create_product_form() -> rx.Component:
         justify='center',
         border_radius="20px",
         padding="20px",
-        on_submit=lambda form_data: OrderDetailView.insert_product_controller(form_data),
+        on_submit=lambda form_data: OrderDetailView.insert_OrderDetail_controller(form_data),
         debug=True,
     )
 
@@ -174,8 +171,8 @@ def create_product_modal() -> rx.Component:
         ),
         rx.dialog.content(
             rx.flex(
-                rx.dialog.title('Crear Producto'),
-                create_product_form(),  # Formulario de creación de producto
+                rx.dialog.title('Crear OrderDetailo'),
+                create_product_form(),  # Formulario de creación de OrderDetailo
                 justify='center',
                 align='center',
                 direction='column',
@@ -197,7 +194,7 @@ def create_product_modal() -> rx.Component:
 
 def main_actions_form():
     return rx.hstack(
-        search_product_component(), 
+        search_OrderDetail_component(), 
         create_product_modal(),
         justify='center',
         style={"margin-top": "auto"}
@@ -214,38 +211,22 @@ def get_table_header():
         background_color="#A67B5B",
     ),
 
-def action():
-    return rx.hstack(
-        rx.button(
-            "Decrement",
-            color_scheme="ruby",
-            on_click=State.decrement,
-        ),
-        rx.heading(State.count, font_size="2em"),
-        rx.button(
-            "Increment",
-            color_scheme="grass",
-            on_click=State.increment,
-        ),
-        spacing="4",
-    )
-
-def get_table_body(product: Product):
+def get_table_body(OrderDetail: Product):
     return rx.table.row(
-        rx.table.cell(product.name),
-        rx.table.cell(product.description),
-        rx.table.cell(product.product_type),
-        rx.table.cell(product.price),
+        rx.table.cell(OrderDetail.name),
+        rx.table.cell(OrderDetail.description),
+        rx.table.cell(OrderDetail.product_type),
+        rx.table.cell(OrderDetail.price),
         rx.table.cell(
             rx.hstack(
-               #delete_product_dialog_component(product.id)
+               delete_OrderDetail_dialog_component(OrderDetail.id)
             ),
         ),
         color="#3E2723",
     )
 
-@rx.page(on_load=OrderDetailView.load_products)
-def products() -> rx.Component:
+@rx.page(on_load=OrderDetailView.load_OrderDetails)
+def OrderDetails() -> rx.Component:
     return rx.box(
         rx.vstack(
             get_title(),
@@ -299,21 +280,21 @@ def pagination_controls() -> rx.Component:
         ),
         justify="center"
     )
-def delete_product_dialog_component(id: int) -> rx.Component:
+def delete_OrderDetail_dialog_component(id: int) -> rx.Component:
     return rx.dialog.root(
         rx.dialog.trigger(rx.button(rx.icon("trash", size=22),
                     background_color="#3E2723",
                     size="2",
                     variant="solid",)),
         rx.dialog.content(
-            rx.dialog.title('Eliminar Producto'),
-            rx.dialog.description('¿Está seguro que desea eliminar este producto?'),
+            rx.dialog.title('Eliminar OrderDetailo'),
+            rx.dialog.description('¿Está seguro que desea eliminar este OrderDetailo?'),
             rx.flex(
                 rx.dialog.close(
                     rx.button('Cancelar', color_scheme='gray', variant='soft')
                 ),
                 rx.dialog.close(
-                    rx.button('Confirmar', on_click=OrderDetailView.delete_product_by_id(id), background_color="#3E2723",
+                    rx.button('Confirmar', on_click=OrderDetailView.delete_OrderDetail_by_id(id), background_color="#3E2723",
                 size="2",
                 variant="solid")
                 ),
@@ -324,4 +305,97 @@ def delete_product_dialog_component(id: int) -> rx.Component:
             #style={"width": "300px"}
         ),
         
+    )'''
+
+'''import reflex as rx
+from typing import List, Dict
+
+class ProductOrderView(rx.State):
+    available_products: List[Dict] = [
+        {"name": "Producto 1", "price": 10.0},
+        {"name": "Producto 2", "price": 20.0},
+        {"name": "Producto 3", "price": 30.0},
+    ]  # Productos estáticos para la prueba
+    selected_products: List[Dict] = []  # Productos seleccionados
+    input_search: str = ""  # Campo de búsqueda
+
+    @rx.event
+    async def update_search_query(self, value: str):
+        """Actualiza el término de búsqueda."""
+        self.input_search = value
+        self.set()
+
+    @rx.var
+    def filter_products(self) -> List[Dict]:
+        """Filtra productos según el término de búsqueda."""
+        search = self.input_search.lower()
+        filtered = [
+            product for product in self.available_products
+            if search in product["name"].lower()
+        ]
+        return filtered
+
+    @rx.event
+    async def add_product_to_order(self, product: Dict):
+        """Añade un producto a la selección si no está duplicado."""
+        if product not in self.selected_products:
+            self.selected_products.append(product)
+            self.set()
+
+    @rx.event
+    async def remove_product_from_order(self, product: Dict):
+        """Elimina un producto seleccionado."""
+        self.selected_products.remove(product)
+        self.set()
+
+# Componente de búsqueda y selección de productos
+def search_and_select_component() -> rx.Component:
+    return rx.vstack(
+        # Campo de búsqueda
+        rx.input(
+            placeholder="Buscar producto...",
+            on_change=ProductOrderView.update_search_query,
+            background_color="#F0F0F0",
+            color="black",
+        ),
+        # Lista de productos filtrados
+        rx.vstack(
+            rx.foreach(
+                ProductOrderView.filter_products,
+                lambda product: rx.hstack(
+                    rx.text(product["name"]),
+                    rx.button(
+                        rx.icon("plus", size=22), 
+                        background_color="#3E2723",
+                        size="2",
+                        variant="solid",
+                        on_click=lambda product=product: ProductOrderView.add_product_to_order(product)),
+                )
+            ),
+        ),
+        # Mostrar los productos seleccionados
+        rx.text("Productos seleccionados:", size="4"),
+        rx.vstack(
+            rx.foreach(
+                ProductOrderView.selected_products,
+                lambda product: rx.hstack(
+                    rx.text(f"{product['name']} - ${product['price']}"),
+                    rx.button(
+                        rx.icon("x", size=22), 
+                        background_color="#3E2723",
+                        size="2",
+                        on_click=lambda product=product: ProductOrderView.remove_product_from_order(product)
+                    ),
+                )
+            )
+        ),
     )
+
+# Página de orden de productos
+def product_order_page() -> rx.Component:
+    return rx.box(
+        search_and_select_component(),
+        padding="20px",
+        align="center",
+        justify="center",
+    )'''

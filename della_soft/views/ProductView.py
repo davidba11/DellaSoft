@@ -162,7 +162,7 @@ def create_product_modal() -> rx.Component:
     return rx.dialog.root(
         rx.dialog.trigger(
             rx.button(
-                rx.icon("cake", size=22),
+                rx.icon("plus", size=22),
                 rx.text("Crear", size="3"),
                 background_color="#3E2723",
                 size="2",
@@ -259,7 +259,7 @@ def products() -> rx.Component:
 def pagination_controls() -> rx.Component:
     return rx.hstack(
         rx.button(
-            "Anterior",
+            rx.icon("arrow-left", size=22),
             on_click=ProductView.prev_page,
             is_disabled=ProductView.offset <= 0,
             background_color="#3E2723",
@@ -271,14 +271,15 @@ def pagination_controls() -> rx.Component:
             ProductView.current_page, " de ", ProductView.num_total_pages
         ),
         rx.button(
-            "Siguiente",
+            rx.icon("arrow-right", size=22),
             on_click=ProductView.next_page,
             is_disabled=ProductView.offset + ProductView.limit >= ProductView.total_items,
             background_color="#3E2723",
             size="2",
             variant="solid"
         ),
-        justify="center"
+        justify="center",
+        color="#3E2723",
     )
 def delete_product_dialog_component(id: int) -> rx.Component:
     return rx.dialog.root(

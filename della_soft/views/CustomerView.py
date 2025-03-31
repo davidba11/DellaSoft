@@ -12,6 +12,11 @@ from ..services.CustomerService import select_all_customer_service, select_by_pa
 
 import asyncio
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .MenuView import MenuView
+
 class CustomerView(rx.State):
     customers: list[Customer]
     customer_search: str
@@ -67,8 +72,6 @@ class CustomerView(rx.State):
         self.customer_search = value
         await self.get_customer_by_parameter()
 
-
-
     async def create_customer(self, data: dict):
         try:
             new_customer = create_customer_service(id=data['id'], first_name=data['first_name'], last_name=data['last_name'], contact=data['contact'], div=data['div'])
@@ -83,6 +86,11 @@ class CustomerView(rx.State):
     async def delete_user_by_id(self, id):
         self.customers = delete_customer_service(id)
         await self.load_customers()
+
+    #@rx.event
+    #async def createOrder (id):
+        #MenuView.display_screen_by_customer("order_detail", id)
+
 
 def get_title():
     return rx.text(
@@ -137,6 +145,7 @@ def get_table_header():
         rx.table.column_header_cell('Contacto'),	
         rx.table.column_header_cell('Div'),
         rx.table.column_header_cell('Accion'), 
+        color="#3E2723",
         background_color="#A67B5B",
     )
 
@@ -149,11 +158,18 @@ def get_table_body(customer: Customer):
         rx.table.cell(customer.div),
         rx.table.cell(
             rx.hstack(
-                    delete_user_dialog_component(customer.id),
-                ),
+                #rx.button(
+                    #rx.icon("notebook-pen", size=22),
+                    #background_color="#3E2723",
+                    #size="2",
+                    #variant="solid",
+                    #on_click=CustomerView.createOrder(customer.id)
+                #),
+                delete_user_dialog_component(customer.id),
             ),
-            color="#3E2723",
         ),
+        color="#3E2723"
+    ),
         
 
 def search_customer_component () ->rx.Component:
@@ -191,7 +207,7 @@ def create_customer_form() -> rx.Component:
 
 def create_customer_dialog_component() -> rx.Component:
     return rx.dialog.root(
-        rx.dialog.trigger(rx.button(rx.icon("user", size=22),
+        rx.dialog.trigger(rx.button(rx.icon("plus", size=22),
                 rx.text("Crear", size="3"),
                 background_color="#3E2723",
                 size="2",
@@ -230,26 +246,26 @@ def main_actions_form():
 def pagination_controls() -> rx.Component:
     return rx.hstack(
         rx.button(
-            "Anterior",
+            rx.icon("arrow-left", size=22),
             on_click=CustomerView.prev_page,
             is_disabled=CustomerView.offset <= 0,
             background_color="#3E2723",
             size="2",
             variant="solid"
-
         ),
         rx.text(  
             CustomerView.current_page, " de ", CustomerView.num_total_pages
         ),
         rx.button(
-            "Siguiente",
+            rx.icon("arrow-right", size=22),
             on_click=CustomerView.next_page,
             is_disabled=CustomerView.offset + CustomerView.limit >= CustomerView.total_items,
             background_color="#3E2723",
             size="2",
             variant="solid"
         ),
-        justify="center"
+        justify="center",
+        color="#3E2723",
     )
 
 def delete_user_dialog_component(id: int) -> rx.Component:
