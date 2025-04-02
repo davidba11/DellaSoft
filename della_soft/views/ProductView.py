@@ -25,20 +25,11 @@ class ProductView(rx.State):
     def change_value(self, value: str):
         self.value = value
 
-    
-    '''async def get_all_products(self):
-        data = await select_all_product_service()
-        #print("Datos desde la BD:", data)
-        return data'''
-
     #@rx.event
     async def load_products(self):
         self.data = await select_all_product_service()
         self.total_items = len(self.data)
         self.data = self.data [self.offset : self.offset + self.limit]
-        #print("Productos obtenidos:", self.data)
-        #yield
-        #self.set()
 
     async def next_page(self):
         """Pasa a la siguiente página si hay más productos."""
@@ -108,21 +99,15 @@ def search_product_component () ->rx.Component:
             color="white",
             on_change=ProductView.load_product_information,
         ),
-        rx.button(
-            rx.icon("search", size=22),
-            rx.text("Buscar", size="3"),
-            background_color="#3E2723",
-            size="2",
-            variant="solid",
-            on_click=lambda: ProductView.get_product,
-        ),
     )
 
 def create_product_form() -> rx.Component:
     return rx.form(
         rx.vstack(
             rx.hstack(
+                rx.text("Nombre: "),
                 rx.input(placeholder='Nombre', name='name', width="100%", background_color="#3E2723", color="white"),
+                rx.text("Categoría: "),
                 rx.select(
                     ["Precio Por Kilo", "Precio Fijo"],
                     value=ProductView.value,
@@ -134,14 +119,21 @@ def create_product_form() -> rx.Component:
                 spacing="2",
             ),
             rx.hstack(
-                rx.input(placeholder='Precio', 
-                name='price', width="100%",background_color="#3E2723",  placeholder_color="white", color="white"),
-                rx.text_area(placeholder='Descripción', description='description', name='description', background_color="#3E2723",  placeholder_color="white", color="white"),
+                rx.text("Precio: "),
+                rx.input(placeholder='Precio', name='price', width="100%",background_color="#3E2723",  placeholder_color="white", color="white"),
                 align='center',
                 justify='center', 
                 spacing="2",
             ),
-            
+            rx.hstack(
+                rx.vstack(
+                    rx.text("Descripción: "),
+                    rx.text_area(placeholder='Descripción', description='description', name='description', background_color="#3E2723",  placeholder_color="white", color="white"),
+                ),
+                align='center',
+                justify='center',
+                spacing="2",
+            ),
             rx.dialog.close(
                 rx.button(
                     'Guardar',
@@ -150,7 +142,7 @@ def create_product_form() -> rx.Component:
                 ),
             ),   
         ),
-         align='center',
+        align='center',
         justify='center',
         border_radius="20px",
         padding="20px",
@@ -303,7 +295,5 @@ def delete_product_dialog_component(id: int) -> rx.Component:
                 margin_top="16px",
                 justify="end",
             ),
-            #style={"width": "300px"}
         ),
-        
     )
