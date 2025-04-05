@@ -37,7 +37,7 @@ class OrderView(rx.State):
             orders_with_names.append({
                 "id": order.id,
                 "id_customer": order.id_customer,
-                "customer_name": await get_customer_id_by_name_service(order.id_customer),  # Llamar async correctamente
+                "customer_name": await select_by_name(order.id_customer),  # Llamar async correctamente
                 "observation": order.observation,
                 "total_order": order.total_order,
                 "total_paid": order.total_paid,
@@ -84,7 +84,7 @@ class OrderView(rx.State):
             {
             "id": order.id,
             "id_customer": order.id_customer,
-            "customer_name": get_customer_id_by_name_service(order.id_customer),
+            "customer_name": select_by_name(order.id_customer),
             "observation": order.observation,
             "total_order": order.total_order,
             "total_paid": order.total_paid,
@@ -140,7 +140,7 @@ def get_title():
 def search_order_component () ->rx.Component:
     return rx.hstack(
         rx.input(
-            placeholder='Buscar Orden',
+            placeholder='Buscar Orden', color="white",
             background_color="#3E2723",
             on_change=OrderView.load_order_information,
         ),
