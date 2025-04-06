@@ -1,8 +1,8 @@
 import reflex as rx
 from typing import Any, List
+from datetime import datetime
 
 from della_soft.repositories.OrderRepository import insert_order
-
 from ..services.OrderService import select_all_order_service, select_order, create_order
 from della_soft.services.CustomerService import get_customer_id_by_name_service
 from ..repositories.CustomerRepository import select_by_name
@@ -10,19 +10,16 @@ from ..services.SystemService import get_sys_date_to_string
 
 from .OrderDetailView import OrderDetailView, OrderDetails
 
-from datetime import datetime
-
 from ..models.OrderModel import Order
 
-#Clase de Pedidos
+# Clase de Pedidos en la rama Develop
 class OrderView(rx.State):
 
     data: List[dict] = []
-    columns: List[str] = ["Cliente","Observación", "Total Pedido", "Total Pagado" ,"Fecha de Ingreso", "Fecha de Entrega", "Acciones"]
+    columns: List[str] = ["Cliente", "Observación", "Total Pedido", "Total Pagado", "Fecha de Ingreso", "Fecha de Entrega", "Acciones"]
     new_order: dict = {}
 
     sys_date: str
-
     input_search: str
 
     offset: int = 0
@@ -36,7 +33,7 @@ class OrderView(rx.State):
             orders_with_names.append({
                 "id": order.id,
                 "id_customer": order.id_customer,
-                "customer_name": await select_by_name(order.id_customer),  # Llamar async correctamente
+                "customer_name": await select_by_name(order.id_customer),  # Llamada async
                 "observation": order.observation,
                 "total_order": order.total_order,
                 "total_paid": order.total_paid,
@@ -47,15 +44,13 @@ class OrderView(rx.State):
         orders_with_names = orders_with_names[self.offset: self.offset + self.limit]
         return orders_with_names
 
-        #return orders_with_names  # Devuelve la lista de diccionarios en lugar de objetos Order
-
     @rx.event
     async def load_orders(self):
         self.data = await self.get_all_orders()
         self.set()
 
     async def next_page(self):
-        """Pasa a la siguiente página si hay más productos."""
+        """Pasa a la siguiente página si hay más pedidos."""
         if self.offset + self.limit < self.total_items:
             self.offset += self.limit
             await self.get_all_orders()
@@ -81,15 +76,15 @@ class OrderView(rx.State):
         orders = await select_order(self.input_search)
         self.data = [
             {
-            "id": order.id,
-            "id_customer": order.id_customer,
-            "customer_name": select_by_name(order.id_customer),
-            "observation": order.observation,
-            "total_order": order.total_order,
-            "total_paid": order.total_paid,
-            "order_date": order.order_date.strftime('%Y-%m-%d %H:%M:%S'),
-            "delivery_date": order.delivery_date.strftime('%Y-%m-%d %H:%M:%S')
-        }
+                "id": order.id,
+                "id_customer": order.id_customer,
+                "customer_name": select_by_name(order.id_customer),
+                "observation": order.observation,
+                "total_order": order.total_order,
+                "total_paid": order.total_paid,
+                "order_date": order.order_date.strftime('%Y-%m-%d %H:%M:%S'),
+                "delivery_date": order.delivery_date.strftime('%Y-%m-%d %H:%M:%S')
+            }
             for order in orders
         ]
         self.total_items = len(self.data)
@@ -102,12 +97,28 @@ class OrderView(rx.State):
         await self.get_order()
 
     @rx.event
-    def insert_order_controller(customer_name: str, observation: str, total_order: float, total_paid: float, order_date: datetime, delivery_date: datetime):
+    async def insert_order_controller(self, form_data: dict):
+        """
+        Se espera que el formulario envíe un diccionario con las siguientes claves:
+         - customer_name (str)
+         - observation (str)
+         - total_order (float o convertible a float)
+         - total_paid (float o convertible a float)
+         - order_date (datetime)
+         - delivery_date (datetime)
+        """
         try:
-        # Buscar el id_customer usando el nombre del cliente
+            customer_name = form_data["customer_name"]
+            observation = form_data["observation"]
+            total_order = float(form_data["total_order"])
+            total_paid = float(form_data["total_paid"])
+            order_date = form_data["order_date"]
+            delivery_date = form_data["delivery_date"]
+            
+            # Buscar el id_customer usando el nombre del cliente
             customer_id = get_customer_id_by_name_service(customer_name)
 
-        # Crear el pedido con el id_customer encontrado
+            # Crear el pedido con el id_customer encontrado
             order_save = Order(
                 id=None,  # Si la base de datos maneja auto increment en el ID, déjalo como None
                 id_customer=customer_id,
@@ -120,7 +131,7 @@ class OrderView(rx.State):
             return insert_order(order_save)
         except ValueError as e:
             print(f"Error: {e}")
-        return None  # Retorna None si no se encuentra el cliente
+        return None
 
     def get_system_date(self):
         self.sys_date = get_sys_date_to_string()
@@ -142,7 +153,8 @@ def get_title():
 def search_order_component() -> rx.Component:
     return rx.hstack(
         rx.input(
-            placeholder='Buscar Orden', color="white",
+            placeholder='Buscar Orden',
+            color="white",
             background_color="#3E2723",
             on_change=OrderView.load_order_information,
             width="80%",
@@ -314,34 +326,6 @@ def get_table_body(order: dict):
     )
 
 
-@rx.page(on_load=OrderView.load_orders)
-def orders() -> rx.Component:
-    return rx.box(
-        rx.vstack(
-            get_title(),
-            main_actions_form(),
-            # Reemplazamos width="100%" por "80vw" para que la tabla no se expanda tanto.
-            rx.table.root(
-                rx.table.header(get_table_header()),
-                rx.table.body(rx.foreach(OrderView.data, get_table_body)),
-                width="80vw",
-                background_color="#FFF8E1",
-                border_radius="20px",
-            ),
-            pagination_controls(),
-            spacing="5",  # Espaciado entre elementos
-            align="center",
-            width="80vw",          # Mismo patrón que ProductView
-        ),
-        display="flex",
-        justifyContent="center",
-        alignItems="flex-start",
-        text_align="center",
-        background_color="#FDEFEA",
-        width="92vw",           # Mismo patrón que ProductView
-        height="80vh",
-    )
-
 def pagination_controls() -> rx.Component:
     return rx.hstack(
         rx.button(
@@ -351,11 +335,8 @@ def pagination_controls() -> rx.Component:
             background_color="#3E2723",
             size="2",
             variant="solid"
-
         ),
-        rx.text(  
-            OrderView.current_page, " de ", OrderView.num_total_pages
-        ),
+        rx.text(OrderView.current_page, " de ", OrderView.num_total_pages),
         rx.button(
             rx.icon("arrow-right", size=22),
             on_click=OrderView.next_page,
@@ -366,4 +347,32 @@ def pagination_controls() -> rx.Component:
         ),
         justify="center",
         color="#3E2723",
+    )
+
+
+@rx.page(on_load=OrderView.load_orders)
+def orders() -> rx.Component:
+    return rx.box(
+        rx.vstack(
+            get_title(),
+            main_actions_form(),
+            rx.table.root(
+                rx.table.header(get_table_header()),
+                rx.table.body(rx.foreach(OrderView.data, get_table_body)),
+                width="80vw",
+                background_color="#FFF8E1",
+                border_radius="20px",
+            ),
+            pagination_controls(),
+            spacing="5",
+            align="center",
+            width="80vw",
+        ),
+        display="flex",
+        justifyContent="center",
+        alignItems="flex-start",
+        text_align="center",
+        background_color="#FDEFEA",
+        width="92vw",
+        height="80vh",
     )
