@@ -8,7 +8,7 @@ from ..services.SystemService import get_sys_date_to_string, get_sys_date
 from .OrderDetailView import OrderDetailView, OrderDetails
 from ..models.OrderModel import Order
 
-
+#Clase de Pedidos
 class OrderView(rx.State):
     data: list[dict]
     columns: List[str] = [
