@@ -5,8 +5,9 @@ from datetime import datetime
 from della_soft.repositories.OrderRepository import insert_order
 from ..services.OrderService import select_all_order_service, select_order, create_order
 from della_soft.services.CustomerService import get_customer_id_by_name_service
+from ..services.CustomerService import select_name_by_id
 from ..repositories.CustomerRepository import select_by_name
-from ..services.SystemService import get_sys_date_to_string
+from ..services.SystemService import get_sys_date_to_string, get_sys_date
 
 from .OrderDetailView import OrderDetailView, OrderDetails
 
@@ -16,7 +17,15 @@ from ..models.OrderModel import Order
 class OrderView(rx.State):
 
     data: List[dict] = []
-    columns: List[str] = ["Cliente", "Observación", "Total Pedido", "Total Pagado", "Fecha de Ingreso", "Fecha de Entrega", "Acciones"]
+    columns: List[str] = [
+        "Cliente",
+        "Observación",
+        "Total Pedido",
+        "Total Pagado",
+        "Fecha de Ingreso",
+        "Fecha de Entrega",
+        "Acciones"
+    ]
     new_order: dict = {}
 
     sys_date: str
@@ -27,17 +36,18 @@ class OrderView(rx.State):
     total_items: int = 0  # Total de pedidos
 
     async def get_all_orders(self):
+        # select_all_order_service es asíncrono, se usa await
         orders = await select_all_order_service()  # Obtiene la lista de objetos Order
         orders_with_names = []
         for order in orders:
             orders_with_names.append({
                 "id": order.id,
                 "id_customer": order.id_customer,
-                "customer_name": await select_by_name(order.id_customer),  # Llamada async
+                "customer_name": select_name_by_id(order.id_customer),
                 "observation": order.observation,
                 "total_order": order.total_order,
                 "total_paid": order.total_paid,
-                "order_date": order.order_date.strftime('%Y-%m-%d %H:%M:%S'),  # Formateo de fecha
+                "order_date": order.order_date.strftime('%Y-%m-%d %H:%M:%S'),
                 "delivery_date": order.delivery_date.strftime('%Y-%m-%d %H:%M:%S')
             })
         self.total_items = len(orders_with_names)
@@ -53,13 +63,15 @@ class OrderView(rx.State):
         """Pasa a la siguiente página si hay más pedidos."""
         if self.offset + self.limit < self.total_items:
             self.offset += self.limit
-            await self.get_all_orders()
+            self.data = await self.get_all_orders()
+            self.set()
 
     async def prev_page(self):
         """Vuelve a la página anterior."""
         if self.offset > 0:
             self.offset -= self.limit
-            await self.get_all_orders()
+            self.data = await self.get_all_orders()
+            self.set()
 
     @rx.var
     def num_total_pages(self) -> int:
@@ -68,17 +80,15 @@ class OrderView(rx.State):
     @rx.var
     def current_page(self) -> int:
         return (self.offset // self.limit) + 1
-    
-    def page_number(self) -> int:
-        return (self.offset // self.limit) + 1
 
     async def get_order(self):
+        # select_order ahora es asíncrono, por lo que se debe await
         orders = await select_order(self.input_search)
         self.data = [
             {
                 "id": order.id,
                 "id_customer": order.id_customer,
-                "customer_name": select_by_name(order.id_customer),
+                "customer_name": select_name_by_id(order.id_customer),
                 "observation": order.observation,
                 "total_order": order.total_order,
                 "total_paid": order.total_paid,
@@ -98,40 +108,21 @@ class OrderView(rx.State):
 
     @rx.event
     async def insert_order_controller(self, form_data: dict):
-        """
-        Se espera que el formulario envíe un diccionario con las siguientes claves:
-         - customer_name (str)
-         - observation (str)
-         - total_order (float o convertible a float)
-         - total_paid (float o convertible a float)
-         - order_date (datetime)
-         - delivery_date (datetime)
-        """
         try:
-            customer_name = form_data["customer_name"]
-            observation = form_data["observation"]
-            total_order = float(form_data["total_order"])
-            total_paid = float(form_data["total_paid"])
-            order_date = form_data["order_date"]
-            delivery_date = form_data["delivery_date"]
-            
-            # Buscar el id_customer usando el nombre del cliente
-            customer_id = get_customer_id_by_name_service(customer_name)
-
-            # Crear el pedido con el id_customer encontrado
-            order_save = Order(
-                id=None,  # Si la base de datos maneja auto increment en el ID, déjalo como None
-                id_customer=customer_id,
-                observation=observation,
-                total_order=total_order,
-                total_paid=total_paid,
-                order_date=order_date,
-                delivery_date=delivery_date
+            form_data['order_date'] = get_sys_date(form_data['order_date'])
+            new_order = create_order(
+                id="",
+                id_customer=form_data['id_customer'],
+                observation=form_data['observation'],
+                total_order=form_data['total_order'],
+                total_paid=form_data['total_paid'],
+                order_date=form_data['order_date'],
+                delivery_date=form_data['delivery_date']
             )
-            return insert_order(order_save)
-        except ValueError as e:
-            print(f"Error: {e}")
-        return None
+            yield OrderView.load_orders()
+            self.set()
+        except BaseException as e:
+            print(e.args)
 
     def get_system_date(self):
         self.sys_date = get_sys_date_to_string()
@@ -175,9 +166,26 @@ def search_order_component() -> rx.Component:
 def create_order_form() -> rx.Component:
     return rx.form(
         rx.vstack(
-            rx.hstack(
-                rx.input(placeholder='Cliente', name='customer_name', width="100%"),
-                rx.text_area(placeholder='Observación', description='observation', name='observation'),
+            rx.text("Crear Pedido", size="5", weight="bold", color="white", text_align="center"),
+            rx.grid(
+                rx.text("Cliente:"),
+                rx.input(
+                    placeholder="Cliente",
+                    name="id_customer",
+                    background_color="#5D4037",
+                    color="white"
+                ),
+                rx.text("Observación:"),
+                rx.text_area(
+                    placeholder="Observación",
+                    name="observation",
+                    background_color="#5D4037",
+                    color="white",
+                    rows="2"
+                ),
+                columns="1fr 2fr",
+                gap="3",
+                width="100%",
             ),
             rx.grid(
                 rx.text("Total Pedido:"),

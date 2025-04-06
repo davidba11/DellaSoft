@@ -6,7 +6,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.orm import joinedload
 
 
-def select_all():
+async def select_all():
     engine = connect()
     with Session(engine) as session:
         query = select(Order)

@@ -59,7 +59,7 @@ def get_customer_section(offset: int, limit: int):
         query = select(Customer).offset(offset).limit(limit)
         return session.exec(query).all()
     
-def select_by_name(name: str) -> Customer:
+async def select_by_name(name: str) -> Customer:
     engine = connect()
     with Session(engine) as session:
         query = select(Customer).where(

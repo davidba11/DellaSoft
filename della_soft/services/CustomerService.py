@@ -17,6 +17,13 @@ def select_by_id_service(id: int):
 def select_by_name_service(name: str):
     return select_by_name(name)
 
+def select_name_by_id(customer_id: int) -> str:
+    """Obtiene el nombre del cliente a partir de su ID."""
+    customer = select_by_id(customer_id)
+    if customer:
+        return f"{customer[0].first_name} {customer[0].last_name}"
+    else:
+        raise ValueError(f"No se encontró un cliente con ID {customer_id}")
 
 def create_customer_service(id: int, first_name: str, last_name: str, contact: str, div: int):
     customer = select_by_id(id)
