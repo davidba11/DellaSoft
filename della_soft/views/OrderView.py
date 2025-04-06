@@ -116,9 +116,9 @@ def create_order_form() -> rx.Component:
             rx.grid(
                 rx.text("Cliente:"),
                 rx.input(
-                    placeholder="Cliente", 
-                    name="id_customer", 
-                    background_color="#5D4037", 
+                    placeholder="Cliente",
+                    name="id_customer",
+                    background_color="#5D4037",
                     color="white"
                 ),
                 rx.text("Observación:"),
@@ -127,25 +127,25 @@ def create_order_form() -> rx.Component:
                     name="observation",
                     background_color="#5D4037",
                     color="white",
-                    rows="2"  # Valor convertido a cadena
+                    rows="2"
                 ),
                 columns="1fr 2fr",
-                gap="3",  # Usamos un valor permitido (por ejemplo "3")
+                gap="3",
                 width="100%",
             ),
             rx.grid(
                 rx.text("Total Pedido:"),
                 rx.input(
-                    placeholder="Total Pedido", 
-                    name="total_order", 
-                    background_color="#5D4037", 
+                    placeholder="Total Pedido",
+                    name="total_order",
+                    background_color="#5D4037",
                     color="white"
                 ),
                 rx.text("Total Pagado:"),
                 rx.input(
-                    placeholder="Total Pagado", 
-                    name="total_paid", 
-                    background_color="#5D4037", 
+                    placeholder="Total Pagado",
+                    name="total_paid",
+                    background_color="#5D4037",
                     color="white"
                 ),
                 columns="1fr 2fr",
@@ -174,7 +174,6 @@ def create_order_form() -> rx.Component:
                 width="100%",
             ),
             rx.divider(),
-            # Se incluye el componente de productos (OrderDetails) en el formulario
             OrderDetails(),
             rx.dialog.close(
                 rx.button(
@@ -221,6 +220,8 @@ def create_order_modal() -> rx.Component:
                 rx.dialog.close(
                     rx.button('Cancelar', color_scheme='gray', variant='soft')
                 ),
+                spacing="3",
+                margin_top="16px",
                 justify="end",
             ),
             background_color="#A67B5B",
@@ -252,7 +253,7 @@ def get_table_header():
         rx.table.column_header_cell(OrderView.columns[6]),
         color="#3E2723",
         background_color="#A67B5B",
-    ),
+    )
 
 
 def get_table_body(order: dict):
@@ -285,24 +286,23 @@ def orders() -> rx.Component:
         rx.vstack(
             get_title(),
             main_actions_form(),
+            # Reemplazamos width="100%" por "80vw" para que la tabla no se expanda tanto.
             rx.table.root(
                 rx.table.header(get_table_header()),
                 rx.table.body(rx.foreach(OrderView.data, get_table_body)),
-                width="90%",
+                width="80vw",
                 background_color="#FFF8E1",
                 border_radius="20px",
             ),
-            rx.divider(),
-            spacing="3",
+            spacing="5",
             align="center",
-            justify="center",
-            style={"margin": "auto"},
+            width="80vw",          # Mismo patrón que ProductView
         ),
         display="flex",
-        flex_direction="column",
-        align_items="center",
-        justify_content="center",
+        justifyContent="center",
+        alignItems="flex-start",
+        text_align="center",
         background_color="#FDEFEA",
-        width="100%",
-        padding="2rem",
+        width="92vw",           # Mismo patrón que ProductView
+        height="80vh",
     )
