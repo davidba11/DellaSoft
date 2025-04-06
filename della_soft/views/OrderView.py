@@ -1,75 +1,127 @@
 import reflex as rx
 from typing import Any, List
-from datetime import datetime
+
+from della_soft.repositories.OrderRepository import insert_order
 
 from ..services.OrderService import select_all_order_service, select_order, create_order
-from ..services.CustomerService import select_name_by_id
-from ..services.SystemService import get_sys_date_to_string, get_sys_date
-from .OrderDetailView import OrderDetailView, OrderDetails
+from della_soft.services.CustomerService import get_customer_id_by_name_service
+from ..repositories.CustomerRepository import select_by_name
+from ..services.SystemService import get_sys_date_to_string
+
+#from .OrderDetailView import OrderDetailView, OrderDetails
+#from .OrderDetailView import product_order_pages
+
+from datetime import datetime
+
 from ..models.OrderModel import Order
 
 
 class OrderView(rx.State):
-    data: list[dict]
-    columns: List[str] = [
-        "Cliente",
-        "Observación",
-        "Total Pedido",
-        "Total Pagado",
-        "Fecha de Ingreso",
-        "Fecha de Entrega",
-        "Acciones",
-    ]
+
+    data: List[dict] = []
+    columns: List[str] = ["Cliente","Observación", "Total Pedido", "Total Pagado" ,"Fecha de Ingreso", "Fecha de Entrega", "Acciones"]
     new_order: dict = {}
 
-    sys_date: str = ""
-    input_search: str = ""
+    sys_date: str
+
+    input_search: str
+
+    offset: int = 0
+    limit: int = 5  # Número de pedidos por página
+    total_items: int = 0  # Total de pedidos
 
     async def get_all_orders(self):
-        orders = await select_all_order_service()  # Lista de objetos Order
+        orders = await select_all_order_service()  # Obtiene la lista de objetos Order
         orders_with_names = []
         for order in orders:
             orders_with_names.append({
                 "id": order.id,
                 "id_customer": order.id_customer,
-                "customer_name": select_name_by_id(order.id_customer),
+                "customer_name": await select_by_name(order.id_customer),  # Llamar async correctamente
                 "observation": order.observation,
                 "total_order": order.total_order,
                 "total_paid": order.total_paid,
-                "order_date": order.order_date,
-                "delivery_date": order.delivery_date,
+                "order_date": order.order_date.strftime('%Y-%m-%d %H:%M:%S'),  # Formateo de fecha
+                "delivery_date": order.delivery_date.strftime('%Y-%m-%d %H:%M:%S')
             })
+        self.total_items = len(orders_with_names)
+        orders_with_names = orders_with_names[self.offset: self.offset + self.limit]
         return orders_with_names
+
+        #return orders_with_names  # Devuelve la lista de diccionarios en lugar de objetos Order
 
     @rx.event
     async def load_orders(self):
         self.data = await self.get_all_orders()
-        yield
         self.set()
 
-    def get_order(self):
-        self.data = select_order(self.input_search)
+    async def next_page(self):
+        """Pasa a la siguiente página si hay más productos."""
+        if self.offset + self.limit < self.total_items:
+            self.offset += self.limit
+            await self.get_all_orders()
 
-    def load_order_information(self, value: str):
-        self.input_search = value
+    async def prev_page(self):
+        """Vuelve a la página anterior."""
+        if self.offset > 0:
+            self.offset -= self.limit
+            await self.get_all_orders()
+
+    @rx.var
+    def num_total_pages(self) -> int:
+        return max((self.total_items + self.limit - 1) // self.limit, 1)
+
+    @rx.var
+    def current_page(self) -> int:
+        return (self.offset // self.limit) + 1
+    
+    def page_number(self) -> int:
+        return (self.offset // self.limit) + 1
+
+    async def get_order(self):
+        orders = await select_order(self.input_search)
+        self.data = [
+            {
+            "id": order.id,
+            "id_customer": order.id_customer,
+            "customer_name": select_by_name(order.id_customer),
+            "observation": order.observation,
+            "total_order": order.total_order,
+            "total_paid": order.total_paid,
+            "order_date": order.order_date.strftime('%Y-%m-%d %H:%M:%S'),
+            "delivery_date": order.delivery_date.strftime('%Y-%m-%d %H:%M:%S')
+        }
+            for order in orders
+        ]
+        self.total_items = len(self.data)
+        self.offset = 0
+        self.data = self.data[self.offset: self.offset + self.limit]
+        self.set()
+
+    async def load_order_information(self, value: str):
+        self.input_search = value.strip()
+        await self.get_order()
 
     @rx.event
-    async def insert_order_controller(self, form_data: dict):
+    def insert_order_controller(customer_name: str, observation: str, total_order: float, total_paid: float, order_date: datetime, delivery_date: datetime):
         try:
-            form_data['order_date'] = get_sys_date(form_data['order_date'])
-            new_order = create_order(
-                id="",
-                id_customer=form_data['id_customer'],
-                observation=form_data['observation'],
-                total_order=form_data['total_order'],
-                total_paid=form_data['total_paid'],
-                order_date=form_data['order_date'],
-                delivery_date=form_data['delivery_date']
+        # Buscar el id_customer usando el nombre del cliente
+            customer_id = get_customer_id_by_name_service(customer_name)
+
+        # Crear el pedido con el id_customer encontrado
+            order_save = Order(
+                id=None,  # Si la base de datos maneja auto increment en el ID, déjalo como None
+                id_customer=customer_id,
+                observation=observation,
+                total_order=total_order,
+                total_paid=total_paid,
+                order_date=order_date,
+                delivery_date=delivery_date
             )
-            yield OrderView.load_orders()
-            self.set()
-        except BaseException as e:
-            print(e.args)
+            return insert_order(order_save)
+        except ValueError as e:
+            print(f"Error: {e}")
+        return None  # Retorna None si no se encuentra el cliente
 
     def get_system_date(self):
         self.sys_date = get_sys_date_to_string()
@@ -91,7 +143,7 @@ def get_title():
 def search_order_component() -> rx.Component:
     return rx.hstack(
         rx.input(
-            placeholder='Buscar Orden',
+            placeholder='Buscar Orden', color="white",
             background_color="#3E2723",
             on_change=OrderView.load_order_information,
             width="80%",
@@ -112,26 +164,9 @@ def search_order_component() -> rx.Component:
 def create_order_form() -> rx.Component:
     return rx.form(
         rx.vstack(
-            rx.text("Crear Pedido", size="5", weight="bold", color="white", text_align="center"),
-            rx.grid(
-                rx.text("Cliente:"),
-                rx.input(
-                    placeholder="Cliente",
-                    name="id_customer",
-                    background_color="#5D4037",
-                    color="white"
-                ),
-                rx.text("Observación:"),
-                rx.text_area(
-                    placeholder="Observación",
-                    name="observation",
-                    background_color="#5D4037",
-                    color="white",
-                    rows="2"
-                ),
-                columns="1fr 2fr",
-                gap="3",
-                width="100%",
+            rx.hstack(
+                rx.input(placeholder='Cliente', name='customer_name', width="100%"),
+                rx.text_area(placeholder='Observación', description='observation', name='observation'),
             ),
             rx.grid(
                 rx.text("Total Pedido:"),
@@ -294,7 +329,8 @@ def orders() -> rx.Component:
                 background_color="#FFF8E1",
                 border_radius="20px",
             ),
-            spacing="5",
+            pagination_controls(),
+            spacing="5",  # Espaciado entre elementos
             align="center",
             width="80vw",          # Mismo patrón que ProductView
         ),
@@ -305,4 +341,30 @@ def orders() -> rx.Component:
         background_color="#FDEFEA",
         width="92vw",           # Mismo patrón que ProductView
         height="80vh",
+    )
+
+def pagination_controls() -> rx.Component:
+    return rx.hstack(
+        rx.button(
+            rx.icon("arrow-left", size=22),
+            on_click=OrderView.prev_page,
+            is_disabled=OrderView.offset <= 0,
+            background_color="#3E2723",
+            size="2",
+            variant="solid"
+
+        ),
+        rx.text(  
+            OrderView.current_page, " de ", OrderView.num_total_pages
+        ),
+        rx.button(
+            rx.icon("arrow-right", size=22),
+            on_click=OrderView.next_page,
+            is_disabled=OrderView.offset + OrderView.limit >= OrderView.total_items,
+            background_color="#3E2723",
+            size="2",
+            variant="solid"
+        ),
+        justify="center",
+        color="#3E2723",
     )

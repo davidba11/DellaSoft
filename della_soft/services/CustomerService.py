@@ -1,4 +1,4 @@
-from ..repositories.CustomerRepository import select_all, select_by_parameter, create_customer, select_by_id, delete_customer, get_total_items, get_customer_section
+from ..repositories.CustomerRepository import select_all, select_by_name, select_by_parameter, create_customer, select_by_id, delete_customer, get_total_items, get_customer_section
 from ..models.CustomerModel import Customer
 
 async def select_all_customer_service():
@@ -14,9 +14,9 @@ async def select_by_parameter_service(value: str):
 def select_by_id_service(id: int):
     return select_by_id(id)
 
-def select_name_by_id(id: int):
-    customer = select_by_id(id)
-    return customer[0].first_name + " "+ customer[0].last_name
+def select_by_name_service(name: str):
+    return select_by_name(name)
+
 
 def create_customer_service(id: int, first_name: str, last_name: str, contact: str, div: int):
     customer = select_by_id(id)
@@ -34,3 +34,10 @@ def get_total_items_service():
 
 def get_customer_section_service(offset: int, limit: int):
     return get_customer_section(offset, limit)
+
+def get_customer_id_by_name_service(name: str) -> int:
+    customer = select_by_name(name)  # Busca el cliente por nombre
+    if customer:
+        return customer.id  # Retorna el id del cliente encontrado
+    else:
+        raise ValueError(f"Cliente con nombre {name} no encontrado.")
