@@ -8,8 +8,7 @@ from della_soft.services.CustomerService import get_customer_id_by_name_service
 from ..repositories.CustomerRepository import select_by_name
 from ..services.SystemService import get_sys_date_to_string
 
-#from .OrderDetailView import OrderDetailView, OrderDetails
-#from .OrderDetailView import product_order_pages
+from .OrderDetailView import OrderDetailView, OrderDetails
 
 from datetime import datetime
 
