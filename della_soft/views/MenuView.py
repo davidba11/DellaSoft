@@ -85,7 +85,7 @@ def login_view():
         rx.vstack(
             rx.heading("Iniciar Sesión", size="6", color="#3E2723", margin_top="3em"),
             rx.input(placeholder="Usuario", on_change=AuthState.set_username, width="100%", background_color="#3E2723", color="white", placeholder_color="white"),
-            rx.input(placeholder="Contraseña", type_="password", password=True, on_change=AuthState.set_password, width="100%", background_color="#3E2723", color="white", placeholder_color="white"),
+            rx.input(placeholder="Contraseña", type="password", password=True, on_change=AuthState.set_password, width="100%", background_color="#3E2723", color="white", placeholder_color="white"),
             rx.button(
                 rx.hstack(rx.icon("log-in"), rx.text("Entrar")),
                 on_click=AuthState.login,
@@ -112,7 +112,7 @@ def register_view():
             rx.input(placeholder="Apellido", on_change=AuthState.set_last_name, width="100%", background_color="#3E2723", color="white", placeholder_color="white"),
             rx.input(placeholder="Contacto", on_change=AuthState.set_contact, width="100%", background_color="#3E2723", color="white", placeholder_color="white"),
             rx.input(placeholder="Usuario", on_change=AuthState.set_username, width="100%", background_color="#3E2723", color="white", placeholder_color="white"),
-            rx.input(placeholder="Contraseña", type_="password", password=True, on_change=AuthState.set_password, width="100%", background_color="#3E2723", color="white", placeholder_color="white"),
+            rx.input(placeholder="Contraseña", type="password", on_change=AuthState.set_password, width="100%", background_color="#3E2723", color="white", placeholder_color="white"),
             rx.button(rx.hstack(rx.icon("user-plus"), rx.text("Registrarse")), on_click=AuthState.register, width="100%", background_color="#3E2723", color="white"),
             rx.cond(AuthState.error != "", rx.text(AuthState.error, color="red")),
             spacing="4",

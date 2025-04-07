@@ -174,12 +174,7 @@ def get_table_body(customer: Customer):
 
 def search_customer_component () ->rx.Component:
     return rx.hstack(
-        rx.input(placeholder='Buscar cliente', background_color="#3E2723",  placeholder_color="white", color="white", on_change=CustomerView.search_on_change),
-        rx.button( rx.icon("search", size=22),
-            rx.text("Buscar", size="3"),
-            background_color="#3E2723",
-            size="2",
-            variant="solid", on_click=CustomerView.get_customer_by_parameter)
+        rx.input(placeholder='Buscar cliente', background_color="#3E2723",  placeholder_color="white", color="white", on_change=CustomerView.search_on_change)
     )
 
 def create_customer_form() -> rx.Component:
