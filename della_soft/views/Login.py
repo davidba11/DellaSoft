@@ -12,7 +12,7 @@ def login_page():
             ),
             rx.input(
                 placeholder="Contraseña",
-                type_="password",
+                type="password",
                 on_change=AuthState.set_password,
                 value=AuthState.password
             ),

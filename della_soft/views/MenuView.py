@@ -1,4 +1,5 @@
 import reflex as rx
+
 from rxconfig import config
 
 from .ProductView import ProductView, products
@@ -24,9 +25,7 @@ class MenuView(rx.State):
         if screen == "orders_view":
             yield OrderView.load_orders()
         if screen == "customers_view":
-            yield CustomerView.load_customers()
-        if screen == "customers_view":
-            yield CustomerView.load_customers()
+            yield CustomerView.load_customers()  
         if screen == "order_detail":
             yield ProductView.load_products()
         if screen == "logout":
@@ -38,8 +37,6 @@ class MenuView(rx.State):
         print(screen)
         yield ProductView.load_products()
         self.screen = screen
-        self.screen = screen
-
 
 def get_title():
     return rx.box(
@@ -53,15 +50,10 @@ def get_title():
             width="100%",
             text_align="center"
         ),
-        position="absolute",
-        top="0",
-        left="0",
-        right="0",
         padding="1em",
         background_color="#FDEFEA",
         z_index="10"
     )
-
 
 def get_menu():
     return rx.vstack(
@@ -69,17 +61,17 @@ def get_menu():
         rx.cond(
             AuthState.is_logged_in,
             rx.vstack(
-                rx.icon("notebook-pen", color="#3E2723", size=40, on_click=MenuView.display_screen("orders_view")),
-                rx.icon("user", color="#3E2723", size=40, on_click=MenuView.display_screen("customers_view")),
-                rx.icon("cake", color="#3E2723", size=40, on_click=MenuView.display_screen("products_view")),
-                rx.icon("settings", color="#3E2723", size=40, on_click=MenuView.display_screen("register")),
+                rx.icon("notebook-pen", color="#3E2723", size=40, on_click=lambda: MenuView.display_screen("orders_view")),
+                rx.icon("user", color="#3E2723", size=40, on_click=lambda: MenuView.display_screen("customers_view")),
+                rx.icon("cake", color="#3E2723", size=40, on_click=lambda: MenuView.display_screen("products_view")),
+                rx.icon("settings", color="#3E2723", size=40, on_click=lambda: MenuView.display_screen("register")),
             ),
-            rx.icon("log-in", color="#3E2723", size=40, on_click=MenuView.display_screen("login"))
+            rx.icon("log-in", color="#3E2723", size=40, on_click=lambda: MenuView.display_screen("login"))
         ),
         rx.spacer(),
         rx.cond(
             AuthState.is_logged_in,
-            rx.icon("log-out", color="#3E2723", size=40, on_click=MenuView.display_screen("logout"))
+            rx.icon("log-out", color="#3E2723", size=40, on_click=lambda: MenuView.display_screen("logout"))
         ),
         height="100vh",
         align="center",
@@ -93,8 +85,14 @@ def login_view():
         rx.vstack(
             rx.heading("Iniciar Sesión", size="6", color="#3E2723", margin_top="3em"),
             rx.input(placeholder="Usuario", on_change=AuthState.set_username, width="100%", background_color="#3E2723", color="white", placeholder_color="white"),
-            rx.input(placeholder="Contraseña", type_="password", on_change=AuthState.set_password, width="100%", background_color="#3E2723", color="white", placeholder_color="white"),
-            rx.button(rx.hstack(rx.icon("log-in"), rx.text("Entrar")), on_click=AuthState.login, width="100%", background_color="#3E2723", color="white"),
+            rx.input(placeholder="Contraseña", type_="password", password=True, on_change=AuthState.set_password, width="100%", background_color="#3E2723", color="white", placeholder_color="white"),
+            rx.button(
+                rx.hstack(rx.icon("log-in"), rx.text("Entrar")),
+                on_click=AuthState.login,
+                width="100%",
+                background_color="#3E2723",
+                color="white"
+            ),
             rx.cond(AuthState.error != "", rx.text(AuthState.error, color="red")),
             spacing="4",
             width="100%",
@@ -114,7 +112,7 @@ def register_view():
             rx.input(placeholder="Apellido", on_change=AuthState.set_last_name, width="100%", background_color="#3E2723", color="white", placeholder_color="white"),
             rx.input(placeholder="Contacto", on_change=AuthState.set_contact, width="100%", background_color="#3E2723", color="white", placeholder_color="white"),
             rx.input(placeholder="Usuario", on_change=AuthState.set_username, width="100%", background_color="#3E2723", color="white", placeholder_color="white"),
-            rx.input(placeholder="Contraseña", type_="password", on_change=AuthState.set_password, width="100%", background_color="#3E2723", color="white", placeholder_color="white"),
+            rx.input(placeholder="Contraseña", type_="password", password=True, on_change=AuthState.set_password, width="100%", background_color="#3E2723", color="white", placeholder_color="white"),
             rx.button(rx.hstack(rx.icon("user-plus"), rx.text("Registrarse")), on_click=AuthState.register, width="100%", background_color="#3E2723", color="white"),
             rx.cond(AuthState.error != "", rx.text(AuthState.error, color="red")),
             spacing="4",
@@ -130,8 +128,8 @@ def register_view():
 def menu() -> rx.Component:
     return rx.hstack(
         get_menu(),
-        rx.container(
-            rx.box(
+        rx.box(
+            rx.vstack(
                 get_title(),
                 rx.cond(
                     MenuView.screen == "login",
@@ -156,20 +154,22 @@ def menu() -> rx.Component:
                                     )
                                 ),
                                 width="100%",
-                                height="100vh",
-                                overflow="hidden",
-                                padding="2em"
+                                height="calc(100vh - 5em)",
+                                padding="2em",
+                                overflow="auto"
                             ),
                             rx.text("Por favor inicie sesión para continuar.")
                         )
                     )
                 )
-            )
+            ),
+            width="100%",
+            height="100vh",
+            overflow="hidden"
         ),
         height="100vh",
         width="100vw",
-        background_color="#FDEFEA",
-        overflow="hidden"
+        background_color="#FDEFEA"
     )
 
 # Página inicial
