@@ -150,14 +150,6 @@ def search_order_component() -> rx.Component:
             on_change=OrderView.load_order_information,
             width="80%",
         ),
-        rx.button(
-            rx.icon("search", size=22),
-            rx.text("Buscar", size="3"),
-            background_color="#3E2723",
-            size="2",
-            variant="solid",
-            on_click=OrderView.get_order,
-        ),
         justify="center",
         spacing="2",
     )
