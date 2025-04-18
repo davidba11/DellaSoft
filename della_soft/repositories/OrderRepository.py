@@ -36,14 +36,14 @@ async def get_order(value: str):
                 )
             )
         )
-        result = session.execute(query)  # Ejecución síncrona
+        result = session.exec(query)
         return result.scalars().all()
 
     
-def insert_order(order: Order):
+def insert_order(order: Order) -> Order:
     engine = connect()
     with Session(engine) as session:
         session.add(order)
         session.commit()
-        query = select(Order)
-        return session.exec(query).all()
+        session.refresh(order)   # Trae el ID generado por la BD
+        return order

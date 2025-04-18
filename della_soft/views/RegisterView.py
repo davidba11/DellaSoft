@@ -32,7 +32,7 @@ def register_page():
                 value=AuthState.password
             ),
             rx.button("Registrarse", on_click=AuthState.register),
-            rx.link("Iniciar sesión", href="/login"),
+            rx.link("Iniciar sesión", href="/menu"),
             rx.cond(AuthState.error != "", rx.text(AuthState.error, color="red")),
             spacing="4",
             width="100%",

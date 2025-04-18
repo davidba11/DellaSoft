@@ -10,9 +10,9 @@ from ..services.ProductService import (
 )
 from ..models.ProductModel import Product
 
-
 class OrderDetailView(rx.State):
-    data: list[Product]
+    data: List[Product]
+    plain_data: List[Product] = []  # Nuevo atributo para la lista "plana"
     columns: List[str] = ["Nombre", "Descripción", "Tipo", "Precio", "Acciones"]
     new_OrderDetail: dict = {}
 
@@ -44,13 +44,13 @@ class OrderDetailView(rx.State):
         self.value = value
 
     async def load_OrderDetails(self):
-        self.data = await select_all_product_service()
-        self.total_items = len(self.data)
-        # Inicializamos el contador para cada producto, si no existe.
-        for product in self.data:
-            if product.id not in self.product_counts:
-                self.product_counts[product.id] = 0
-        self.data = self.data[self.offset : self.offset + self.limit]
+        # Carga todos los productos para el detalle
+        all_products = await select_all_product_service()
+        self.plain_data = all_products[:]            # Guarda la lista completa sin paginar
+        self.total_items = len(all_products)
+        # Aplica paginación para la grilla
+        self.data = all_products[self.offset : self.offset + self.limit]
+        self.set()
 
     async def next_page(self):
         if self.offset + self.limit < self.total_items:
@@ -73,7 +73,8 @@ class OrderDetailView(rx.State):
     @rx.event
     async def insert_OrderDetail_controller(self, form_data: dict):
         try:
-            new_OrderDetail = create_product(
+            # Crear el producto (detalle del pedido) usando create_product
+            create_product(
                 id="",
                 name=form_data["name"],
                 description=form_data["description"],
@@ -82,11 +83,12 @@ class OrderDetailView(rx.State):
             )
             yield OrderDetailView.load_OrderDetails()
             self.set()
-        except BaseException as e:
-            print(e.args)
+        except Exception as e:
+            print("Error en insert_OrderDetail_controller:", e)
+            return
 
     async def load_OrderDetail_information(self, value: str):
-        self.input_search = value
+        self.input_search = value.strip()
         await self.get_product()
 
     async def get_product(self):
@@ -104,16 +106,13 @@ class OrderDetailView(rx.State):
         self.data = delete_product_service(id)
         await self.load_OrderDetails()
 
-
 def product_count_cell(product_id: int) -> rx.Component:
-    # Se accede directamente al contador, garantizando que existe.
     return rx.text(
         OrderDetailView.product_counts[product_id],
         size="4",
         width="40px",
         text_align="center",
     )
-
 
 def get_title():
     return rx.text(
@@ -125,8 +124,7 @@ def get_title():
         fontFamily="DejaVu Sans Mono",
         width="100%",
         text_align="center",
-    ),
-
+    )
 
 def search_OrderDetail_component() -> rx.Component:
     return rx.hstack(
@@ -138,18 +136,9 @@ def search_OrderDetail_component() -> rx.Component:
             on_change=OrderDetailView.load_OrderDetail_information,
             width="80%",
         ),
-        rx.button(
-            rx.icon("search", size=22),
-            rx.text("Buscar", size="3"),
-            background_color="#3E2723",
-            size="2",
-            variant="solid",
-            on_click=OrderDetailView.get_product,
-        ),
         justify="center",
         spacing="2",
     )
-
 
 def create_product_form() -> rx.Component:
     return rx.form(
@@ -211,7 +200,6 @@ def create_product_form() -> rx.Component:
         justify="center",
     )
 
-
 def create_product_modal() -> rx.Component:
     return rx.dialog.root(
         rx.dialog.trigger(
@@ -244,7 +232,6 @@ def create_product_modal() -> rx.Component:
         style={"width": "300px", "margin": "auto"},
     )
 
-
 def main_actions_form():
     return rx.hstack(
         search_OrderDetail_component(),
@@ -253,7 +240,6 @@ def main_actions_form():
         style={"margin-top": "auto", "width": "100%"},
         gap="4",
     ),
-
 
 def get_table_header():
     return rx.table.row(
@@ -264,8 +250,7 @@ def get_table_header():
         rx.table.column_header_cell(OrderDetailView.columns[4]),
         color="#3E2723",
         background_color="#A67B5B",
-    ),
-
+    )
 
 def get_table_body(OrderDetail: Product):
     product_id = OrderDetail.id
@@ -294,7 +279,6 @@ def get_table_body(OrderDetail: Product):
         color="#3E2723",
     )
 
-
 def pagination_controls() -> rx.Component:
     return rx.hstack(
         rx.button(
@@ -319,7 +303,6 @@ def pagination_controls() -> rx.Component:
         ),
         justify="center",
     )
-
 
 @rx.page(on_load=OrderDetailView.load_OrderDetails)
 def OrderDetails() -> rx.Component:

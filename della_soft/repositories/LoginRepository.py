@@ -37,7 +37,7 @@ class AuthState(rx.State):
         self.username = ""
         self.password = ""
         self.error = ""
-        return rx.redirect("/login")
+        return rx.redirect("/menu")
 
     def register(self):
         engine= connect()
@@ -57,4 +57,4 @@ class AuthState(rx.State):
             session.add(new_user)
             session.commit()
             self.error = ""
-            return rx.redirect("/login")
+            return rx.redirect("/menu")

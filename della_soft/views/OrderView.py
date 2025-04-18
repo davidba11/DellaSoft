@@ -1,12 +1,12 @@
 import reflex as rx
 from typing import Any, List
-from datetime import datetime
 
+from della_soft.models.ProductOrderModel import ProductOrder
+from della_soft.repositories.ProductOrderRespository import insert_product_order
+from ..services.ProductOrderService import insert_product_order_service
 from della_soft.repositories.OrderRepository import insert_order
-from ..services.OrderService import select_all_order_service, select_order, create_order
-from della_soft.services.CustomerService import get_customer_id_by_name_service
+from ..services.OrderService import select_all_order_service, select_order 
 from ..services.CustomerService import select_name_by_id
-from ..repositories.CustomerRepository import select_by_name
 from ..services.SystemService import get_sys_date_to_string, get_sys_date
 
 from .OrderDetailView import OrderDetailView, OrderDetails
@@ -109,24 +109,45 @@ class OrderView(rx.State):
     @rx.event
     async def insert_order_controller(self, form_data: dict):
         try:
+            # Convertir fecha de cadena a datetime
             form_data['order_date'] = get_sys_date(form_data['order_date'])
-            new_order = create_order(
-                id="",
-                id_customer=form_data['id_customer'],
-                observation=form_data['observation'],
-                total_order=form_data['total_order'],
-                total_paid=form_data['total_paid'],
-                order_date=form_data['order_date'],
-                delivery_date=form_data['delivery_date']
+
+            # Crear y guardar la orden principal
+            order_save = Order(
+                id=None,
+                id_customer=int(form_data["id_customer"]),
+                observation=form_data["observation"],
+                total_order=float(form_data["total_order"]),
+                total_paid=float(form_data["total_paid"]),
+                order_date=form_data["order_date"],
+                delivery_date=form_data["delivery_date"],
             )
+            new_order = insert_order(order_save)  # Debe devolver el objeto con id
+
+            # Obtener el estado actual de OrderDetailView CORRECTAMENTE usando self.get_state
+            detail_state = await self.get_state(OrderDetailView)
+
+            # Recorrer la lista "plana" de productos y sus cantidades
+            for prod in detail_state.plain_data:
+                qty = detail_state.product_counts.get(prod.id, 0)
+                if qty > 0:
+                    po = ProductOrder(
+                        id=None,
+                        quantity=qty,
+                        id_product=prod.id,
+                        id_order=new_order.id,
+                    )
+                    insert_product_order_service(po)
+
+            # Refrescar la lista de órdenes
             yield OrderView.load_orders()
             self.set()
-        except BaseException as e:
-            print(e.args)
+        except Exception as e:
+            print("Error en insert_order_controller:", e)
 
     def get_system_date(self):
         self.sys_date = get_sys_date_to_string()
-
+        yield OrderDetailView.load_OrderDetails()
 
 def get_title():
     return rx.text(
