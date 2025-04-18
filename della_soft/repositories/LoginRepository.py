@@ -10,6 +10,7 @@ from ..views import MenuView
 
 
 class AuthState(rx.State):
+    ci: str = ""
     username: str = ""
     password: str = ""
     first_name: str = ""
@@ -55,6 +56,8 @@ class AuthState(rx.State):
         self.error = ""
         from ..views import MenuView
 
+    def set_ci(self, value: str):
+        self.ci = value
 
     def set_username(self, value: str):
         self.username = value
@@ -95,7 +98,7 @@ class AuthState(rx.State):
         print(f"Rol seleccionado: {selected_role} -> ID: {self.id_rol}")
 
     def register(self):
-        if not all([self.username, self.password, self.first_name, self.last_name, self.username, self.password, self.contact, self.id_rol]):
+        if not all([self.ci, self.username, self.password, self.first_name, self.last_name, self.username, self.password, self.contact, self.id_rol]):
             self.error = "Todos los campos son obligatorios."
             return
 
@@ -105,6 +108,7 @@ class AuthState(rx.State):
 
             create_user_service(
                 id=new_id,
+                ci= self.ci,
                 first_name=self.first_name,
                 last_name=self.last_name,
                 username=self.username,

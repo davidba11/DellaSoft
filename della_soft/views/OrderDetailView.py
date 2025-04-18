@@ -12,9 +12,9 @@ from ..models.ProductModel import Product
 
 class OrderDetailView(rx.State):
     data: List[Product]
-    plain_data: List[Product] = []  # Nuevo atributo para la lista "plana"
+    plain_data: List[Product] = []  # Lista completa sin paginación
     columns: List[str] = ["Nombre", "Descripción", "Tipo", "Precio", "Acciones"]
-    new_OrderDetail: dict = {}
+    new_order_detail: dict = {}
 
     input_search: str
     value: str = "Precio Por Kilo"
@@ -23,34 +23,22 @@ class OrderDetailView(rx.State):
     limit: int = 3  # Número de productos por página
     total_items: int = 0  # Total de productos
 
-    # Diccionario normal (reactivo por pertenecer al estado)
+    # Contador de cantidades para cada producto (estado reactivo)
     product_counts: dict[int, int] = {}
 
-    @rx.event
-    def increment(self, product_id: int):
-        if product_id not in self.product_counts:
-            self.product_counts[product_id] = 0
-        self.product_counts[product_id] += 1
-
-    @rx.event
-    def decrement(self, product_id: int):
-        if product_id not in self.product_counts:
-            self.product_counts[product_id] = 0
-        if self.product_counts[product_id] > 0:
-            self.product_counts[product_id] -= 1
-
-    @rx.event
-    def change_value(self, value: str):
-        self.value = value
-
     async def load_OrderDetails(self):
-        # Carga todos los productos para el detalle
-        all_products = await select_all_product_service()
-        self.plain_data = all_products[:]            # Guarda la lista completa sin paginar
-        self.total_items = len(all_products)
-        # Aplica paginación para la grilla
-        self.data = all_products[self.offset : self.offset + self.limit]
-        self.set()
+        # Carga todos los productos
+        products = await select_all_product_service()
+        self.total_items = len(products)
+
+        # Reinicia los contadores a cero al abrir el modal
+        self.product_counts = {p.id: 0 for p in products}
+
+        # Guarda lista "plana" completa
+        self.plain_data = products[:]
+
+        # Aplica paginación para la vista
+        self.data = products[self.offset : self.offset + self.limit]
 
     async def next_page(self):
         if self.offset + self.limit < self.total_items:
@@ -71,9 +59,24 @@ class OrderDetailView(rx.State):
         return (self.offset // self.limit) + 1
 
     @rx.event
+    def increment(self, product_id: int):
+        # Aumenta el contador de un producto
+        self.product_counts[product_id] = self.product_counts.get(product_id, 0) + 1
+
+    @rx.event
+    def decrement(self, product_id: int):
+        # Disminuye el contador (sin bajar de cero)
+        if self.product_counts.get(product_id, 0) > 0:
+            self.product_counts[product_id] -= 1
+
+    @rx.event
+    def change_value(self, value: str):
+        self.value = value
+
+    @rx.event
     async def insert_OrderDetail_controller(self, form_data: dict):
         try:
-            # Crear el producto (detalle del pedido) usando create_product
+            # Opcional: Crear un producto nuevo si así lo requiere tu lógica
             create_product(
                 id="",
                 name=form_data["name"],
@@ -81,6 +84,7 @@ class OrderDetailView(rx.State):
                 product_type=form_data["product_type"],
                 price=form_data["price"],
             )
+            # Recarga para refrescar la grilla
             yield OrderDetailView.load_OrderDetails()
             self.set()
         except Exception as e:
@@ -88,25 +92,31 @@ class OrderDetailView(rx.State):
             return
 
     async def load_OrderDetail_information(self, value: str):
+        # Búsqueda por texto
         self.input_search = value.strip()
         await self.get_product()
 
     async def get_product(self):
-        self.data = await get_product(self.input_search)
-        self.total_items = len(self.data)
-        for product in self.data:
-            if product.id not in self.product_counts:
-                self.product_counts[product.id] = 0
+        # Trae productos filtrados
+        filtered = await get_product(self.input_search)
+        self.total_items = len(filtered)
+
+        # Asegura contadores inicializados
+        for p in filtered:
+            self.product_counts.setdefault(p.id, 0)
+
         self.offset = 0
-        self.data = self.data[self.offset : self.offset + self.limit]
+        self.data = filtered[self.offset : self.offset + self.limit]
         self.set()
 
     @rx.event
     async def delete_OrderDetail_by_id(self, id):
-        self.data = delete_product_service(id)
+        # Elimina un detalle de producto y recarga
+        delete_product_service(id)
         await self.load_OrderDetails()
 
 def product_count_cell(product_id: int) -> rx.Component:
+    # Muestra la cantidad actual
     return rx.text(
         OrderDetailView.product_counts[product_id],
         size="4",
@@ -209,6 +219,7 @@ def create_product_modal() -> rx.Component:
                 background_color="#3E2723",
                 size="2",
                 variant="solid",
+                type="button",  # evitar submit del formulario padre
             )
         ),
         rx.dialog.content(
@@ -241,6 +252,7 @@ def main_actions_form():
         gap="4",
     ),
 
+
 def get_table_header():
     return rx.table.row(
         rx.table.column_header_cell(OrderDetailView.columns[0]),
@@ -252,23 +264,25 @@ def get_table_header():
         background_color="#A67B5B",
     )
 
-def get_table_body(OrderDetail: Product):
-    product_id = OrderDetail.id
+def get_table_body(product: Product) -> rx.Component:
+    product_id = product.id
     return rx.table.row(
-        rx.table.cell(rx.text(OrderDetail.name, text_align="center")),
-        rx.table.cell(rx.text(OrderDetail.description, text_align="center")),
-        rx.table.cell(rx.text(OrderDetail.product_type, text_align="center")),
-        rx.table.cell(rx.text(OrderDetail.price, text_align="center")),
+        rx.table.cell(rx.text(product.name, text_align="center")),
+        rx.table.cell(rx.text(product.description, text_align="center")),
+        rx.table.cell(rx.text(product.product_type, text_align="center")),
+        rx.table.cell(rx.text(product.price, text_align="center")),
         rx.table.cell(
             rx.hstack(
                 rx.button(
                     rx.icon("minus", size=18),
+                    type="button",  # evita submit
                     background_color="#3E2723",
                     on_click=lambda: OrderDetailView.decrement(product_id),
                 ),
                 product_count_cell(product_id),
                 rx.button(
                     rx.icon("plus", size=18),
+                    type="button",  # evita submit
                     background_color="#3E2723",
                     on_click=lambda: OrderDetailView.increment(product_id),
                 ),
@@ -288,6 +302,7 @@ def pagination_controls() -> rx.Component:
             background_color="#3E2723",
             size="2",
             variant="solid",
+            type="button",
         ),
         rx.text(
             OrderDetailView.current_page, " de ", OrderDetailView.num_total_pages,
@@ -300,6 +315,7 @@ def pagination_controls() -> rx.Component:
             background_color="#3E2723",
             size="2",
             variant="solid",
+            type="button",
         ),
         justify="center",
     )
