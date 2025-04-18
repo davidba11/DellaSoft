@@ -15,13 +15,13 @@ def select_by_order_id(id_order: int):
         query = select(ProductOrder).where(ProductOrder.id_order == id_order)
         return session.exec(query).all()
 
-def insert_product_order(product_order: ProductOrder):
+def insert_product_order(product_order: ProductOrder) -> ProductOrder:
     engine = connect()
     with Session(engine) as session:
         session.add(product_order)
         session.commit()
-        query = select(product_order).where(ProductOrder.id_order == product_order.id_order)
-        return session.exec(query).all()
+        session.refresh(product_order)
+        return product_order
 
 def delete_product_order(id: int):
     engine = connect()
