@@ -18,6 +18,7 @@ class Customer(rx.Model, table=True):
     id: int = Field(default=None, primary_key=True, nullable=False) #Se declara como PK
     first_name: str = Field(nullable=False)
     last_name: str = Field(nullable=False)
+    ci: str = Field(nullable=True)
     contact: str = Field(nullable=False)
     div: int | None = Field(default=None, nullable=True)
     username: str | None = Field(default=None, nullable=True)

@@ -1,4 +1,4 @@
-from ..repositories.CustomerRepository import select_all, select_by_name, select_by_parameter, create_customer, select_by_id, delete_customer, get_total_items, get_customer_section, create_user, select_all_users, select_users_by_parameter
+from ..repositories.CustomerRepository import select_all, select_by_name, select_by_parameter, create_customer, select_by_id, delete_customer, get_total_items, get_customer_section, create_user, select_all_users, select_users_by_parameter, update_customer
 from ..models.CustomerModel import Customer
 from ..services.SystemService import hash_password
 
@@ -36,20 +36,31 @@ def select_name_by_id(customer_id: int) -> str:
     else:
         raise ValueError(f"No se encontró un cliente con ID {customer_id}")
 
-def create_customer_service(id: int, first_name: str, last_name: str, contact: str, div: int):
-    customer = select_by_id(id)
-    # print(customer)
-    if(len(customer) == 0):
-        customer_save = Customer(id=id, first_name=first_name, last_name=last_name, contact=contact, div=div, id_rol=3)
-        # print(customer_save)
-        return create_customer(customer_save)
-    else:
-        raise ValueError("Ya existe un cliente con ese ID.")
+def create_customer_service(first_name: str, last_name: str, contact: str, div: int, ci: str):
     
-def create_user_service(id: int, first_name: str, last_name: str, contact: str, username: str, password: str, id_rol: int):
+    # customer = select_by_id(id)
+    # print(customer)
+    # if(len(customer) == 0):
+    customer_save = Customer(ci=ci, first_name=first_name, last_name=last_name, contact=contact, div=div, id_rol=3)
+    # print(customer_save)
+    return create_customer(customer_save)
+    # else:
+        # raise ValueError("Ya existe un cliente con ese ID.")
+
+def update_customer_service(**kwargs):
+    print(kwargs)
+    try:
+        customer = Customer(**kwargs)
+        update_customer(customer)
+    except Exception as e:
+        print(e)
+    return customer
+
+
+def create_user_service(id: int, first_name: str, last_name: str, contact: str, username: str, password: str, id_rol: int, ci: str):
     customer = select_by_id(id)
     if(len(customer) == 0):
-        customer_save = Customer(id=id, first_name=first_name, last_name=last_name, contact=contact, username=username, password=password, id_rol=id_rol)
+        customer_save = Customer(id=id, first_name=first_name, last_name=last_name, contact=contact, username=username, password=password, id_rol=id_rol, ci=ci)
         return create_user(customer_save)
     else:
         raise ValueError("Ya existe un usuario con ese ID.")

@@ -8,7 +8,7 @@ from typing import Any, List, Dict
 
 from ..models.CustomerModel import Customer
 
-from ..services.CustomerService import select_all_customer_service, select_by_parameter_service, create_customer_service, delete_customer_service, select_by_id_service, get_total_items_service
+from ..services.CustomerService import select_all_customer_service, select_by_parameter_service, create_customer_service, delete_customer_service, select_by_id_service, get_total_items_service, update_customer_service
 
 import asyncio
 
@@ -24,7 +24,13 @@ class CustomerView(rx.State):
     offset: int = 0
     limit: int = 5  # Número de clientes por página
     total_items: int = 0  # Total de clientes
-    
+    id: int = 0
+    first_name: str = ""
+    last_name: str = ""
+    contact: str = ""
+    div: int = 0
+    ci: str = ''
+    error_message: str = ""
 
     async def load_customers(self):
         """Carga clientes con paginación."""
@@ -73,23 +79,52 @@ class CustomerView(rx.State):
         await self.get_customer_by_parameter()
     
     async def create_customer(self, data: dict):
-     
+        print(data)
         try:
-            new_customer = create_customer_service(id=data['id'], first_name=data['first_name'], last_name=data['last_name'], contact=data['contact'], div=data['div'])
+            new_customer = create_customer_service(ci=data['ci'], first_name=data['first_name'], last_name=data['last_name'], contact=data['contact'], div=data['div'])
             await self.load_customers()
             #self.customers = self.customers + [new_customer]
             yield rx.toast('Cliente creado.')
             self.error_message = ""
         except BaseException as e:
+            print(e)
             self.error_message = "Error: El cliente ya existe."
             
     async def delete_user_by_id(self, id):
         self.customers = delete_customer_service(id)
         await self.load_customers()
 
-    #@rx.event
-    #async def createOrder (id):
-        #MenuView.display_screen_by_customer("order_detail", id)
+    def values(self, customer: Customer):
+        self.id = customer.id
+        self.first_name = customer.first_name
+        self.last_name = customer.last_name
+        self.contact = customer.contact
+        self.div   = customer.div
+        self.ci   = customer.ci
+    
+    @rx.event
+    async def update_customer(self, form_data: dict):
+        print(f'Update customer {form_data}')
+        try:
+            update_customer_service(
+                id=int(form_data["id"]),
+                ci=int(form_data["ci"]),
+                first_name=form_data["first_name"],
+                last_name=form_data["last_name"],
+                contact=form_data["contact"],
+                div=int(form_data["div"])
+            )
+            await self.load_customers()
+            yield rx.toast('Cliente actualizado.')
+            self.error_message = ""
+        except Exception as e:
+            print(e)
+            self.error_message = f"Error al actualizar: {e}"
+
+
+    
+
+
 
 
 def get_title():
@@ -151,7 +186,7 @@ def get_table_header():
 
 def get_table_body(customer: Customer):
     return rx.table.row(
-        rx.table.cell(customer.id),
+        rx.table.cell(customer.ci),
         rx.table.cell(customer.first_name),
         rx.table.cell(customer.last_name),
         rx.table.cell(customer.contact),
@@ -165,6 +200,7 @@ def get_table_body(customer: Customer):
                     #variant="solid",
                     #on_click=CustomerView.createOrder(customer.id)
                 #),
+                update_customer_dialog_component(customer),
                 delete_user_dialog_component(customer.id),
             ),
         ),
@@ -180,7 +216,7 @@ def search_customer_component () ->rx.Component:
 def create_customer_form() -> rx.Component:
     return rx.form(
         rx.vstack(
-            rx.input(placeholder='Cedula', id='id', background_color="#3E2723",  placeholder_color="white", color="white"),
+            rx.input(placeholder='Cedula', name='ci', background_color="#3E2723",  placeholder_color="white", color="white"),
             rx.input(placeholder='Nombre', name='first_name', background_color="#3E2723",  placeholder_color="white", color="white"),
             rx.input(placeholder='Apellido', name='last_name', background_color="#3E2723",  placeholder_color="white", color="white"),
             rx.input(placeholder='Contacto', name='contact', background_color="#3E2723",  placeholder_color="white", color="white"),
@@ -201,6 +237,77 @@ def create_customer_form() -> rx.Component:
      
     )
 
+def update_customer_form() -> rx.Component:
+    return rx.form(
+        rx.vstack(
+            rx.input(
+                name='id', 
+                type="hidden", 
+                value=CustomerView.id,
+                on_change = lambda value: CustomerView.set_id(value)
+            ),
+            rx.input(
+                placeholder='Cédula',
+                name='ci',
+                # is_disabled=True,
+                value=CustomerView.ci,
+                on_change = CustomerView.set_ci,
+                background_color="#3E2723",
+                placeholder_color="white",
+                color="white"
+            ),
+            rx.input(
+                placeholder='Nombre',
+                name='first_name',
+                value=CustomerView.first_name,
+                on_change=CustomerView.set_first_name,
+                background_color="#3E2723",
+                placeholder_color="white",
+                color="white"
+            ),
+            rx.input(
+                placeholder='Apellido',
+                name='last_name',
+                value=CustomerView.last_name,
+                on_change=CustomerView.set_last_name,
+                background_color="#3E2723",
+                placeholder_color="white",
+                color="white"
+            ),
+            rx.input(
+                placeholder='Contacto',
+                name='contact',
+                value=CustomerView.contact,
+                on_change=CustomerView.set_contact,
+                background_color="#3E2723",
+                placeholder_color="white",
+                color="white"
+            ),
+            rx.input(
+                placeholder='Div',
+                name='div',
+                value=CustomerView.div,
+                on_change=lambda value: CustomerView.set_div(value),
+                background_color="#3E2723",
+                placeholder_color="white",
+                color="white"
+            ),
+            rx.dialog.close(
+                rx.button('Actualizar', background_color="#3E2723", type='submit')
+            ),
+            rx.text(CustomerView.error_message),
+            align='center',
+            justify='center',
+            spacing="2"
+        ),
+        align='center',
+        justify='center',
+        border_radius="20px",
+        padding="20px",
+        on_submit=CustomerView.update_customer
+    )
+
+
 def create_customer_dialog_component() -> rx.Component:
     return rx.dialog.root(
         rx.dialog.trigger(rx.button(rx.icon("plus", size=22),
@@ -212,6 +319,39 @@ def create_customer_dialog_component() -> rx.Component:
             rx.flex(
                 rx.dialog.title('Crear Cliente'),
                 create_customer_form(),  # Formulario de creación de cliente
+                justify='center',
+                align='center',
+                direction='column',
+                weight="bold",
+                color="#3E2723"
+            ),
+            rx.flex(
+                rx.dialog.close(
+                    rx.button('Cancelar', color_scheme='gray', variant='soft')
+                ),
+                spacing="3",
+                margin_top="16px",
+                justify="end",
+            ),
+            background_color="#A67B5B",
+        ),
+        style={"width": "300px"}
+    )
+
+
+def update_customer_dialog_component(customer) -> rx.Component:
+    return rx.dialog.root(
+        rx.dialog.trigger(rx.button(rx.icon("plus", size=22),
+                rx.text("Crear", size="3"),
+                background_color="#3E2723",
+                size="2",
+                variant="solid",
+                on_click=lambda: CustomerView.values(customer)
+                )),
+        rx.dialog.content(
+            rx.flex(
+                rx.dialog.title('Actualizar Cliente'),
+                update_customer_form(),  # Formulario de creación de cliente
                 justify='center',
                 align='center',
                 direction='column',

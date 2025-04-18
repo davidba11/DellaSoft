@@ -2,6 +2,7 @@ from ..models.CustomerModel import Customer
 from .ConnectDB import connect
 from sqlmodel import Session, select, or_, String, func
 
+
  
 def select_all():
     engine = connect()
@@ -24,7 +25,7 @@ def select_by_parameter(value: str):
             or_(
                 Customer.first_name.ilike(f"%{value}%"),  # Busca coincidencias parciales en nombre
                 Customer.last_name.ilike(f"%{value}%"),   # Busca coincidencias parciales en apellido
-                Customer.id.cast(String).ilike(f"%{value}%"),
+                Customer.ci.cast(String).ilike(f"%{value}%"),
                 Customer.contact.cast(String).ilike(f"%{value}%"),
                 Customer.div.cast(String).ilike(f"%{value}%") # Convierte ID a string y busca coincidencias
             ))
@@ -53,10 +54,28 @@ def select_by_id(id: int):
 def create_customer(customer: Customer):
     engine = connect()
     with Session(engine) as session:
+        print(customer)
         session.add(customer)
         session.commit()
         query = select(Customer)
         return session.exec(query).all()
+
+def update_customer(customer: Customer):
+    print(f'customer {customer}')
+    engine = connect()
+    with Session(engine) as session:
+        query = select(Customer).where(Customer.id == customer.id)
+        c = session.exec(query).first()
+        if c:
+            c.first_name = customer.first_name
+            c.last_name = customer.last_name
+            c.contact = customer.contact 
+            c.div = customer.div
+            c.ci = customer.ci
+            session.add(c)
+            session.commit()
+            query = select(Customer)
+            return session.exec(query).all()
 
 def create_user(customer: Customer):
     engine = connect()
@@ -95,7 +114,13 @@ async def select_by_name(name: str) -> Customer:
         query = select(Customer).where(
             Customer.first_name.ilike(f"%{name}%") | Customer.last_name.ilike(f"%{name}%")
         )
-        return session.exec(query).first()  
+        return session.exec(query).first()
+
+
+
+
+
+
 
 
 
