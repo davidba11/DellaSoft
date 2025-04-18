@@ -9,6 +9,14 @@ def select_all():
         query = select(Customer)
         return session.exec(query).all()
     
+def select_all_users():
+    engine = connect()
+    with Session(engine) as session:
+        query = select(Customer).where(
+            Customer.id_rol != 3
+        )
+        return session.exec(query).all()
+    
 def select_by_parameter(value: str):
     engine = connect()
     with Session(engine) as session:
@@ -22,6 +30,20 @@ def select_by_parameter(value: str):
             ))
         return session.exec(query).all()
     
+def select_users_by_parameter(value: str):
+    engine = connect()
+    with Session(engine) as session:
+        query = select(Customer).where(
+            or_(
+                Customer.first_name.ilike(f"%{value}%"),  # Busca coincidencias parciales en nombre
+                Customer.last_name.ilike(f"%{value}%"),   # Busca coincidencias parciales en apellido
+                Customer.username.cast(String).ilike(f"%{value}%"),
+                Customer.contact.cast(String).ilike(f"%{value}%"),
+            )).where(
+            Customer.id_rol != 3
+        )
+        return session.exec(query).all()
+    
 def select_by_id(id: int):
     engine = connect()
     with Session(engine) as session:
@@ -29,6 +51,14 @@ def select_by_id(id: int):
         return session.exec(query).all()
     
 def create_customer(customer: Customer):
+    engine = connect()
+    with Session(engine) as session:
+        session.add(customer)
+        session.commit()
+        query = select(Customer)
+        return session.exec(query).all()
+
+def create_user(customer: Customer):
     engine = connect()
     with Session(engine) as session:
         session.add(customer)

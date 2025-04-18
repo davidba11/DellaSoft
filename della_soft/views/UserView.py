@@ -8,16 +8,18 @@ from typing import Any, List, Dict
 
 from ..models.CustomerModel import Customer
 
-from ..services.CustomerService import select_all_customer_service, select_by_parameter_service, create_customer_service, delete_customer_service, select_by_id_service, get_total_items_service
+from ..services.CustomerService import select_all_customer_service, select_by_parameter_service, create_customer_service, delete_customer_service, select_by_id_service, get_total_items_service, create_user_service, select_all_users_service, select_users_by_parameter, select_users_by_parameter_service
 
 import asyncio
+
+from ..repositories.LoginRepository import AuthState
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .MenuView import MenuView
 
-class CustomerView(rx.State):
+class UserView(rx.State):
     customers: list[Customer]
     customer_search: str
     error_message: str = '' 
@@ -28,7 +30,7 @@ class CustomerView(rx.State):
 
     async def load_customers(self):
         """Carga clientes con paginación."""
-        self.customers = await select_all_customer_service()
+        self.customers = await select_all_users_service()
         self.total_items = len(self.customers)  # Cuenta el total de clientes
         self.customers = self.customers[self.offset : self.offset + self.limit]  # Aplica paginación
         self.set()
@@ -57,12 +59,12 @@ class CustomerView(rx.State):
         return (self.offset // self.limit) + 1
 
     async def get_customer_by_parameter(self):
-        self.customers = select_by_parameter_service(self)
+        self.customers = select_users_by_parameter_service(self)
 
 
     async def get_customer_by_parameter(self):
         """Busca clientes por nombre y aplica paginación correctamente."""
-        self.customers = await select_by_parameter_service(self.customer_search)  # 🔍 Filtra clientes
+        self.customers = await select_users_by_parameter_service(self.customer_search)  # 🔍 Filtra clientes
         self.total_items = len(self.customers)  # ✅ Guarda total de clientes filtrados
         self.offset = 0  # ✅ Reinicia a la primera página
         self.customers = self.customers[self.offset : self.offset + self.limit]  # ✅ Aplica paginación
@@ -87,14 +89,11 @@ class CustomerView(rx.State):
         self.customers = delete_customer_service(id)
         await self.load_customers()
 
-    #@rx.event
-    #async def createOrder (id):
-        #MenuView.display_screen_by_customer("order_detail", id)
 
 
 def get_title():
     return rx.text(
-        "Clientes",
+        "Usuarios",
         size="7",
         weight="bold",
         color="#3E2723",
@@ -104,8 +103,8 @@ def get_title():
     ),
     
 
-@rx.page(on_load=CustomerView.load_customers)
-def customers() -> rx.Component:
+@rx.page(on_load=UserView.load_customers)
+def users() -> rx.Component:
     return rx.box(
         rx.vstack(
             get_title(),
@@ -115,7 +114,7 @@ def customers() -> rx.Component:
                     get_table_header(),
                 ),
                 rx.table.body(
-                    (rx.foreach(CustomerView.customers, get_table_body))
+                    (rx.foreach(UserView.customers, get_table_body))
                 ),
                 width="80vw",
                 background_color="#FFF8E1",
@@ -143,7 +142,6 @@ def get_table_header():
         rx.table.column_header_cell('Nombre'),
         rx.table.column_header_cell('Apellido'),	
         rx.table.column_header_cell('Contacto'),	
-        rx.table.column_header_cell('Div'),
         rx.table.column_header_cell('Accion'), 
         color="#3E2723",
         background_color="#A67B5B",
@@ -155,7 +153,6 @@ def get_table_body(customer: Customer):
         rx.table.cell(customer.first_name),
         rx.table.cell(customer.last_name),
         rx.table.cell(customer.contact),
-        rx.table.cell(customer.div),
         rx.table.cell(
             rx.hstack(
                 #rx.button(
@@ -165,7 +162,10 @@ def get_table_body(customer: Customer):
                     #variant="solid",
                     #on_click=CustomerView.createOrder(customer.id)
                 #),
-                delete_user_dialog_component(customer.id),
+                rx.cond(
+                    AuthState.is_admin,
+                    delete_user_dialog_component(customer.id))
+                ,
             ),
         ),
         color="#3E2723"
@@ -174,31 +174,90 @@ def get_table_body(customer: Customer):
 
 def search_customer_component () ->rx.Component:
     return rx.hstack(
-        rx.input(placeholder='Buscar cliente', background_color="#3E2723",  placeholder_color="white", color="white", on_change=CustomerView.search_on_change)
+        rx.input(placeholder='Buscar usuario', background_color="#3E2723",  placeholder_color="white", color="white", on_change=UserView.search_on_change)
     )
 
 def create_customer_form() -> rx.Component:
-    return rx.form(
+    return rx.flex(
         rx.vstack(
-            rx.input(placeholder='Cedula', id='id', background_color="#3E2723",  placeholder_color="white", color="white"),
-            rx.input(placeholder='Nombre', name='first_name', background_color="#3E2723",  placeholder_color="white", color="white"),
-            rx.input(placeholder='Apellido', name='last_name', background_color="#3E2723",  placeholder_color="white", color="white"),
-            rx.input(placeholder='Contacto', name='contact', background_color="#3E2723",  placeholder_color="white", color="white"),
-            rx.input(placeholder='Div', name='div', background_color="#3E2723",  placeholder_color="white", color="white"),
-            rx.dialog.close(rx.button('Guardar', background_color="#3E2723", type='submit')),
-            rx.text(CustomerView.error_message),
-            align='center',
-            justify='center', 
-            spacing="2",
-            
-    ),
-    align='center',
-    justify='center',
-    #direction='column',
-    border_radius="20px",
-    padding="20px",
-    on_submit=CustomerView.create_customer,
-     
+
+            rx.heading("Registro de Usuario", size="6", color="#3E2723", margin_top="3em"),
+
+            rx.input(
+                placeholder="Nombre",
+                on_change=AuthState.set_first_name,
+                width="100%",
+                background_color="#3E2723",
+                color="white",
+                placeholder_color="white"
+            ),
+
+            rx.input(
+                placeholder="Apellido",
+                on_change=AuthState.set_last_name,
+                width="100%",
+                background_color="#3E2723",
+                color="white",
+                placeholder_color="white"
+            ),
+
+            rx.input(
+                placeholder="Contacto",
+                on_change=AuthState.set_contact,
+                width="100%",
+                background_color="#3E2723",
+                color="white",
+                placeholder_color="white"
+            ),
+
+            rx.input(
+                placeholder="Usuario",
+                on_change=AuthState.set_username,
+                width="100%",
+                background_color="#3E2723",
+                color="white",
+                placeholder_color="white"
+            ),
+
+            rx.input(
+                placeholder="Contraseña",
+                type="password",
+                on_change=AuthState.set_password,
+                width="100%",
+                background_color="#3E2723",
+                color="white",
+                placeholder_color="white"
+            ),
+
+            rx.select(
+                items=AuthState.roles,
+                name="id_rol",
+                placeholder="Seleccione un rol",
+                on_change=AuthState.set_selected_role,
+
+                background_color="#3E2723",
+                color="white",
+                width="100%"
+            ),
+
+            rx.dialog.close(rx.button(
+                rx.hstack(rx.icon("user-plus"), rx.text("Crear")),
+                on_click=AuthState.register,
+                width="100%",
+                background_color="#3E2723",
+                color="white"
+            )),
+
+            rx.cond(AuthState.error != "", rx.text(AuthState.error, color="red")),
+
+            spacing="4",
+            width="100%",
+            max_width="400px"
+        ),
+        justify="center",
+        align="center",
+        height="60vh",
+        width="100%"
     )
 
 def create_customer_dialog_component() -> rx.Component:
@@ -210,7 +269,7 @@ def create_customer_dialog_component() -> rx.Component:
                 variant="solid",)),
         rx.dialog.content(
             rx.flex(
-                rx.dialog.title('Crear Cliente'),
+                rx.dialog.title('Crear Usuario'),
                 create_customer_form(),  # Formulario de creación de cliente
                 justify='center',
                 align='center',
@@ -234,7 +293,7 @@ def create_customer_dialog_component() -> rx.Component:
 def main_actions_form():
     return rx.hstack(
         search_customer_component(), 
-        create_customer_dialog_component(),
+        rx.cond(AuthState.is_admin, create_customer_dialog_component()),
         justify='center',
         style={"margin-top": "auto"}
     ),
@@ -243,19 +302,19 @@ def pagination_controls() -> rx.Component:
     return rx.hstack(
         rx.button(
             rx.icon("arrow-left", size=22),
-            on_click=CustomerView.prev_page,
-            is_disabled=CustomerView.offset <= 0,
+            on_click=UserView.prev_page,
+            is_disabled=UserView.offset <= 0,
             background_color="#3E2723",
             size="2",
             variant="solid"
         ),
         rx.text(  
-            CustomerView.current_page, " de ", CustomerView.num_total_pages
+            UserView.current_page, " de ", UserView.num_total_pages
         ),
         rx.button(
             rx.icon("arrow-right", size=22),
-            on_click=CustomerView.next_page,
-            is_disabled=CustomerView.offset + CustomerView.limit >= CustomerView.total_items,
+            on_click=UserView.next_page,
+            is_disabled=UserView.offset + UserView.limit >= UserView.total_items,
             background_color="#3E2723",
             size="2",
             variant="solid"
@@ -271,14 +330,14 @@ def delete_user_dialog_component(id: int) -> rx.Component:
                     size="2",
                     variant="solid",)),
         rx.dialog.content(
-            rx.dialog.title('Eliminar Cliente'),
-            rx.dialog.description('¿Está seguro que desea eliminar este cliente?'),
+            rx.dialog.title('Eliminar Usuario'),
+            rx.dialog.description('¿Está seguro que desea eliminar este usuario?'),
             rx.flex(
                 rx.dialog.close(
                     rx.button('Cancelar', color_scheme='gray', variant='soft')
                 ),
                 rx.dialog.close(
-                    rx.button('Confirmar', on_click=CustomerView.delete_user_by_id(id), background_color="#3E2723",
+                    rx.button('Confirmar', on_click=UserView.delete_user_by_id(id), background_color="#3E2723",
                 size="2",
                 variant="solid")
                 ),
