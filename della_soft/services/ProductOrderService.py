@@ -10,7 +10,7 @@ def select_all_product_order_service():
     return products_order
 
 def select_by_order_id_service(id_order: int):
-    return select_by_order_id
+    return select_by_order_id(id_order)
 
 def insert_product_order_service(product_order: ProductOrder):
     return insert_repo_product_order(product_order)
