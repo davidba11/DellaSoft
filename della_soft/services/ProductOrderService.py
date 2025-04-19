@@ -1,6 +1,6 @@
-from ..repositories.ProductOrderRespository import select_all, select_by_order_id, delete_product_order, insert_product_order
+from ..repositories.ProductOrderRepository import select_all, select_by_order_id, delete_product_order, insert_product_order
 from ..models.ProductOrderModel import ProductOrder
-from ..repositories.ProductOrderRespository import (
+from ..repositories.ProductOrderRepository import (
     insert_product_order as insert_repo_product_order,
 )
 
