@@ -12,33 +12,55 @@ from ..models.ProductModel import Product
 
 class OrderDetailView(rx.State):
     data: List[Product]
-    plain_data: List[Product] = []  # Lista completa sin paginación
+    plain_data: List[Product] = []  # Copia sin paginación
     columns: List[str] = ["Nombre", "Descripción", "Tipo", "Precio", "Acciones"]
-    new_order_detail: dict = {}
+    new_OrderDetail: dict = {}
 
     input_search: str
     value: str = "Precio Por Kilo"
 
     offset: int = 0
-    limit: int = 3  # Número de productos por página
-    total_items: int = 0  # Total de productos
+    limit: int = 3
+    total_items: int = 0
 
-    # Contador de cantidades para cada producto (estado reactivo)
+    # Diccionario normal (reactivo) de cantidades
     product_counts: dict[int, int] = {}
 
+    # ← Nueva var computada: total del pedido
+    @rx.var
+    def total(self) -> float:
+        # plain_data es lista normal, así que podemos iterar
+        return sum(
+            p.price * self.product_counts.get(p.id, 0)
+            for p in self.plain_data
+        )
+
+    @rx.event
+    def increment(self, product_id: int):
+        if product_id not in self.product_counts:
+            self.product_counts[product_id] = 0
+        self.product_counts[product_id] += 1
+
+    @rx.event
+    def decrement(self, product_id: int):
+        if product_id not in self.product_counts:
+            self.product_counts[product_id] = 0
+        if self.product_counts[product_id] > 0:
+            self.product_counts[product_id] -= 1
+
+    @rx.event
+    def change_value(self, value: str):
+        self.value = value
+
     async def load_OrderDetails(self):
-        # Carga todos los productos
-        products = await select_all_product_service()
-        self.total_items = len(products)
-
-        # Reinicia los contadores a cero al abrir el modal
-        self.product_counts = {p.id: 0 for p in products}
-
-        # Guarda lista "plana" completa
-        self.plain_data = products[:]
-
-        # Aplica paginación para la vista
-        self.data = products[self.offset : self.offset + self.limit]
+        self.data = await select_all_product_service()
+        self.total_items = len(self.data)
+        # Guardamos copia plana
+        self.plain_data = self.data[:]
+        # ¡Reiniciamos todos los contadores a cero!
+        self.product_counts = {p.id: 0 for p in self.plain_data}
+        # Aplicamos paginación
+        self.data = self.data[self.offset : self.offset + self.limit]
 
     async def next_page(self):
         if self.offset + self.limit < self.total_items:
@@ -59,24 +81,8 @@ class OrderDetailView(rx.State):
         return (self.offset // self.limit) + 1
 
     @rx.event
-    def increment(self, product_id: int):
-        # Aumenta el contador de un producto
-        self.product_counts[product_id] = self.product_counts.get(product_id, 0) + 1
-
-    @rx.event
-    def decrement(self, product_id: int):
-        # Disminuye el contador (sin bajar de cero)
-        if self.product_counts.get(product_id, 0) > 0:
-            self.product_counts[product_id] -= 1
-
-    @rx.event
-    def change_value(self, value: str):
-        self.value = value
-
-    @rx.event
     async def insert_OrderDetail_controller(self, form_data: dict):
         try:
-            # Opcional: Crear un producto nuevo si así lo requiere tu lógica
             create_product(
                 id="",
                 name=form_data["name"],
@@ -84,7 +90,6 @@ class OrderDetailView(rx.State):
                 product_type=form_data["product_type"],
                 price=form_data["price"],
             )
-            # Recarga para refrescar la grilla
             yield OrderDetailView.load_OrderDetails()
             self.set()
         except Exception as e:
@@ -92,31 +97,25 @@ class OrderDetailView(rx.State):
             return
 
     async def load_OrderDetail_information(self, value: str):
-        # Búsqueda por texto
         self.input_search = value.strip()
         await self.get_product()
 
     async def get_product(self):
-        # Trae productos filtrados
-        filtered = await get_product(self.input_search)
-        self.total_items = len(filtered)
-
-        # Asegura contadores inicializados
-        for p in filtered:
-            self.product_counts.setdefault(p.id, 0)
-
+        self.data = await get_product(self.input_search)
+        self.total_items = len(self.data)
+        for p in self.data:
+            if p.id not in self.product_counts:
+                self.product_counts[p.id] = 0
         self.offset = 0
-        self.data = filtered[self.offset : self.offset + self.limit]
+        self.data = self.data[self.offset : self.offset + self.limit]
         self.set()
 
     @rx.event
     async def delete_OrderDetail_by_id(self, id):
-        # Elimina un detalle de producto y recarga
-        delete_product_service(id)
+        self.data = delete_product_service(id)
         await self.load_OrderDetails()
 
 def product_count_cell(product_id: int) -> rx.Component:
-    # Muestra la cantidad actual
     return rx.text(
         OrderDetailView.product_counts[product_id],
         size="4",
@@ -154,13 +153,7 @@ def create_product_form() -> rx.Component:
     return rx.form(
         rx.vstack(
             rx.hstack(
-                rx.input(
-                    placeholder="Nombre",
-                    name="name",
-                    width="40%",
-                    background_color="#3E2723",
-                    color="white",
-                ),
+                rx.input(placeholder="Nombre", name="name", width="40%", background_color="#3E2723", color="white"),
                 rx.select(
                     ["Precio Por Kilo", "Precio Fijo"],
                     value=OrderDetailView.value,
@@ -175,33 +168,12 @@ def create_product_form() -> rx.Component:
                 justify="center",
             ),
             rx.hstack(
-                rx.input(
-                    placeholder="Precio",
-                    name="price",
-                    width="40%",
-                    background_color="#3E2723",
-                    placeholder_color="white",
-                    color="white",
-                ),
-                rx.text_area(
-                    placeholder="Descripción",
-                    description="description",
-                    name="description",
-                    width="40%",
-                    background_color="#3E2723",
-                    placeholder_color="white",
-                    color="white",
-                ),
+                rx.input(placeholder="Precio", name="price", width="40%", background_color="#3E2723", placeholder_color="white", color="white"),
+                rx.text_area(placeholder="Descripción", name="description", width="40%", background_color="#3E2723", placeholder_color="white", color="white"),
                 spacing="2",
                 justify="center",
             ),
-            rx.dialog.close(
-                rx.button(
-                    "Guardar",
-                    background_color="#3E2723",
-                    type="submit",
-                )
-            ),
+            rx.dialog.close(rx.button("Guardar", background_color="#3E2723", type="submit")),
             spacing="4",
         ),
         on_submit=OrderDetailView.insert_OrderDetail_controller,
@@ -210,62 +182,40 @@ def create_product_form() -> rx.Component:
         justify="center",
     )
 
-def create_product_modal() -> rx.Component:
-    return rx.dialog.root(
-        rx.dialog.trigger(
-            rx.button(
-                rx.icon("cake", size=22),
-                rx.text("Crear", size="3"),
-                background_color="#3E2723",
-                size="2",
-                variant="solid",
-                type="button",  # evitar submit del formulario padre
-            )
-        ),
-        rx.dialog.content(
-            rx.flex(
-                rx.dialog.title("Crear Producto"),
-                create_product_form(),
-                direction="column",
-                align="center",
-                justify="center",
-                gap="4",
-            ),
-            rx.flex(
-                rx.dialog.close(
-                    rx.button("Cancelar", color_scheme="gray", variant="soft")
-                ),
-                justify="end",
-            ),
-            background_color="#A67B5B",
-            padding="4",
-        ),
-        style={"width": "300px", "margin": "auto"},
-    )
-
 def main_actions_form():
     return rx.hstack(
         search_OrderDetail_component(),
-        create_product_modal(),
+        rx.dialog.root(
+            rx.dialog.trigger(
+                rx.button(rx.icon("cake", size=22), rx.text("Crear", size="3"),
+                          background_color="#3E2723", size="2", variant="solid",
+                          on_click=OrderDetailView.load_OrderDetails, type="button")
+            ),
+            rx.dialog.content(
+                rx.flex(rx.dialog.title("Crear Producto"), create_product_form(), direction="column", align="center", justify="center", gap="4"),
+                rx.flex(rx.dialog.close(rx.button("Cancelar", color_scheme="gray", variant="soft", type="button")), justify="end"),
+                background_color="#A67B5B", padding="4",
+            ),
+            style={"width": "300px", "margin": "auto"},
+        ),
         justify="center",
         style={"margin-top": "auto", "width": "100%"},
         gap="4",
     ),
 
-
 def get_table_header():
     return rx.table.row(
-        rx.table.column_header_cell(OrderDetailView.columns[0]),
-        rx.table.column_header_cell(OrderDetailView.columns[1]),
-        rx.table.column_header_cell(OrderDetailView.columns[2]),
-        rx.table.column_header_cell(OrderDetailView.columns[3]),
-        rx.table.column_header_cell(OrderDetailView.columns[4]),
+        rx.table.column_header_cell("Nombre"),
+        rx.table.column_header_cell("Descripción"),
+        rx.table.column_header_cell("Tipo"),
+        rx.table.column_header_cell("Precio"),
+        rx.table.column_header_cell("Acciones"),
         color="#3E2723",
         background_color="#A67B5B",
     )
 
-def get_table_body(product: Product) -> rx.Component:
-    product_id = product.id
+def get_table_body(product: Product):
+    pid = product.id
     return rx.table.row(
         rx.table.cell(rx.text(product.name, text_align="center")),
         rx.table.cell(rx.text(product.description, text_align="center")),
@@ -273,19 +223,9 @@ def get_table_body(product: Product) -> rx.Component:
         rx.table.cell(rx.text(product.price, text_align="center")),
         rx.table.cell(
             rx.hstack(
-                rx.button(
-                    rx.icon("minus", size=18),
-                    type="button",  # evita submit
-                    background_color="#3E2723",
-                    on_click=lambda: OrderDetailView.decrement(product_id),
-                ),
-                product_count_cell(product_id),
-                rx.button(
-                    rx.icon("plus", size=18),
-                    type="button",  # evita submit
-                    background_color="#3E2723",
-                    on_click=lambda: OrderDetailView.increment(product_id),
-                ),
+                rx.button(rx.icon("minus", size=18), background_color="#3E2723", type="button", on_click=lambda pid=pid: OrderDetailView.decrement(pid)),
+                product_count_cell(pid),
+                rx.button(rx.icon("plus", size=18), background_color="#3E2723", type="button", on_click=lambda pid=pid: OrderDetailView.increment(pid)),
                 spacing="2",
                 justify="center",
             )
@@ -295,28 +235,9 @@ def get_table_body(product: Product) -> rx.Component:
 
 def pagination_controls() -> rx.Component:
     return rx.hstack(
-        rx.button(
-            "Anterior",
-            on_click=OrderDetailView.prev_page,
-            is_disabled=OrderDetailView.offset <= 0,
-            background_color="#3E2723",
-            size="2",
-            variant="solid",
-            type="button",
-        ),
-        rx.text(
-            OrderDetailView.current_page, " de ", OrderDetailView.num_total_pages,
-            text_align="center",
-        ),
-        rx.button(
-            "Siguiente",
-            on_click=OrderDetailView.next_page,
-            is_disabled=OrderDetailView.offset + OrderDetailView.limit >= OrderDetailView.total_items,
-            background_color="#3E2723",
-            size="2",
-            variant="solid",
-            type="button",
-        ),
+        rx.button("Anterior", on_click=OrderDetailView.prev_page, is_disabled=OrderDetailView.offset <= 0, background_color="#3E2723", size="2", variant="solid", type="button"),
+        rx.text(OrderDetailView.current_page, " de ", OrderDetailView.num_total_pages, text_align="center"),
+        rx.button("Siguiente", on_click=OrderDetailView.next_page, is_disabled=OrderDetailView.offset + OrderDetailView.limit >= OrderDetailView.total_items, background_color="#3E2723", size="2", variant="solid", type="button"),
         justify="center",
     )
 
