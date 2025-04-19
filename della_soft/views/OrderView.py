@@ -1,20 +1,19 @@
+# OrderView.py
 import reflex as rx
-from typing import Any, List
+from typing import List
 
-from della_soft.models.ProductOrderModel import ProductOrder
-from della_soft.repositories.ProductOrderRespository import insert_product_order
+from ..models.ProductOrderModel import ProductOrder
+from ..repositories.ProductOrderRepository import insert_product_order
 from ..services.ProductOrderService import insert_product_order_service
-from della_soft.repositories.OrderRepository import insert_order
+from ..repositories.OrderRepository import insert_order
 from ..services.OrderService import select_all_order_service, select_order 
-from ..services.CustomerService import select_name_by_id
+from ..services.CustomerService import select_name_by_id, select_all_customer_service
 from ..services.SystemService import get_sys_date_to_string, get_sys_date
 
 from .OrderDetailView import OrderDetailView, OrderDetails
-
 from ..models.OrderModel import Order
 
 class OrderView(rx.State):
-
     data: List[dict] = []
     columns: List[str] = [
         "Cliente",
@@ -25,7 +24,9 @@ class OrderView(rx.State):
         "Fecha de Entrega",
         "Acciones"
     ]
-    new_order: dict = {}
+
+    customer_options: List[str] = []
+    _customer_map: dict[str, str] = {}
 
     sys_date: str
     input_search: str
@@ -36,9 +37,9 @@ class OrderView(rx.State):
 
     async def get_all_orders(self):
         orders = await select_all_order_service()
-        orders_with_names = []
+        lst = []
         for o in orders:
-            orders_with_names.append({
+            lst.append({
                 "id": o.id,
                 "id_customer": o.id_customer,
                 "customer_name": select_name_by_id(o.id_customer),
@@ -48,8 +49,8 @@ class OrderView(rx.State):
                 "order_date": o.order_date.strftime('%Y-%m-%d %H:%M:%S') if o.order_date else "",
                 "delivery_date": o.delivery_date.strftime('%Y-%m-%d %H:%M:%S') if o.delivery_date else ""
             })
-        self.total_items = len(orders_with_names)
-        return orders_with_names[self.offset : self.offset + self.limit]
+        self.total_items = len(lst)
+        return lst[self.offset : self.offset + self.limit]
 
     @rx.event
     async def load_orders(self):
@@ -93,7 +94,7 @@ class OrderView(rx.State):
         ]
         self.total_items = len(self.data)
         self.offset = 0
-        self.data = self.data[self.offset : self.offset + self.limit]
+        self.data = self.data[0 : self.limit]
         self.set()
 
     async def load_order_information(self, value: str):
@@ -101,12 +102,27 @@ class OrderView(rx.State):
         await self.get_order()
 
     @rx.event
+    async def load_customers(self):
+        customers = await select_all_customer_service()
+        opts = []
+        cmap = {}
+        for c in customers:
+            label = f"({c.ci or 0}) {c.first_name} {c.last_name}"
+            opts.append(label)
+            cmap[label] = str(c.id)
+        self.customer_options = opts
+        self._customer_map = cmap
+        self.set()
+
+    @rx.event
     async def insert_order_controller(self, form_data: dict):
         try:
+            sel = form_data.get("id_customer", "")
+            form_data["id_customer"] = int(self._customer_map.get(sel, sel))
             form_data['order_date'] = get_sys_date(form_data['order_date'])
             order_save = Order(
                 id=None,
-                id_customer=int(form_data["id_customer"]),
+                id_customer=form_data["id_customer"],
                 observation=form_data["observation"],
                 total_order=float(form_data["total_order"]),
                 total_paid=float(form_data["total_paid"]),
@@ -133,20 +149,23 @@ class OrderView(rx.State):
             print("Error en insert_order_controller:", e)
 
     def get_system_date(self):
+        # Actualiza fecha y dispara carga de detalle y clientes
         self.sys_date = get_sys_date_to_string()
         yield OrderDetailView.load_OrderDetails()
+        yield OrderView.load_customers()
 
-def get_title():
+
+def get_title() -> rx.Component:
     return rx.text(
         "Pedidos",
         size="7",
         weight="bold",
         color="#3E2723",
-        high_contrast=True,
         fontFamily="DejaVu Sans Mono",
         width="100%",
         text_align="center",
     ),
+
 
 def search_order_component() -> rx.Component:
     return rx.hstack(
@@ -161,23 +180,29 @@ def search_order_component() -> rx.Component:
         spacing="2",
     )
 
+
 def create_order_form() -> rx.Component:
     return rx.form(
         rx.vstack(
             rx.text("Crear Pedido", size="5", weight="bold", color="white", text_align="center"),
             rx.grid(
-                rx.text("Cliente:"),
-                rx.input(name="id_customer", background_color="#5D4037", color="white"),
+                rx.text("Cliente:"),  
+                rx.select(
+                    items=OrderView.customer_options,
+                    name="id_customer",
+                    placeholder="Seleccione Cliente",
+                    background_color="#5D4037",
+                    color="white",
+                ),
                 rx.text("Observación:"),
                 rx.text_area(name="observation", background_color="#5D4037", color="white", rows="2"),
                 columns="1fr 2fr", gap="3", width="100%",
             ),
             rx.grid(
                 rx.text("Total Pedido:"),
-                # ← aquí leemos directamente de OrderDetailView.total
                 rx.input(
-                    value=OrderDetailView.total,
                     name="total_order",
+                    value=OrderDetailView.total,
                     background_color="#5D4037",
                     color="white",
                     read_only=True,
@@ -188,7 +213,13 @@ def create_order_form() -> rx.Component:
             ),
             rx.grid(
                 rx.text("Fecha de Ingreso:"),
-                rx.input(value=OrderView.sys_date, name="order_date", read_only=True, background_color="#5D4037", color="white"),
+                rx.input(
+                    value=OrderView.sys_date,
+                    name="order_date",
+                    read_only=True,
+                    background_color="#5D4037",
+                    color="white",
+                ),
                 rx.text("Fecha de Entrega:"),
                 rx.input(name="delivery_date", type="datetime-local", background_color="#5D4037", color="white"),
                 columns="1fr 2fr", gap="3", width="100%",
@@ -196,14 +227,7 @@ def create_order_form() -> rx.Component:
             rx.divider(),
             OrderDetails(),
             rx.dialog.close(
-                rx.button(
-                    rx.icon("save", size=22),
-                    "Guardar",
-                    type="submit",
-                    background_color="#3E2723",
-                    size="2",
-                    variant="solid",
-                )
+                rx.button(rx.icon("save", size=22), "Guardar", type="submit", background_color="#3E2723", size="2", variant="solid")
             ),
             spacing="3",
         ),
@@ -213,6 +237,7 @@ def create_order_form() -> rx.Component:
         align="center",
         justify="center",
     )
+
 
 def create_order_modal() -> rx.Component:
     return rx.dialog.root(
@@ -228,7 +253,7 @@ def create_order_modal() -> rx.Component:
         ),
         rx.dialog.content(
             rx.flex(
-                rx.dialog.title('Crear Pedido'),
+                rx.dialog.title("Crear Pedido"),
                 create_order_form(),
                 direction="column",
                 align="center",
@@ -236,7 +261,7 @@ def create_order_modal() -> rx.Component:
                 gap="3",
             ),
             rx.flex(
-                rx.dialog.close(rx.button('Cancelar', color_scheme='gray', variant='soft', type="button")),
+                rx.dialog.close(rx.button("Cancelar", color_scheme="gray", variant="soft", type="button")),
                 justify="end",
                 spacing="3",
                 margin_top="16px",
@@ -248,7 +273,8 @@ def create_order_modal() -> rx.Component:
         style={"max_width": "900px", "max_height": "300px", "margin": "auto"},
     )
 
-def main_actions_form():
+
+def main_actions_form() -> rx.Component:
     return rx.hstack(
         search_order_component(),
         create_order_modal(),
@@ -257,7 +283,8 @@ def main_actions_form():
         gap="3",
     ),
 
-def get_table_header():
+
+def get_table_header() -> rx.Component:
     return rx.table.row(
         rx.table.column_header_cell("Cliente"),
         rx.table.column_header_cell("Observación"),
@@ -270,7 +297,8 @@ def get_table_header():
         background_color="#A67B5B",
     )
 
-def get_table_body(order: dict):
+
+def get_table_body(order: dict) -> rx.Component:
     return rx.table.row(
         rx.table.cell(rx.text(order["customer_name"], text_align="center")),
         rx.table.cell(rx.text(order["observation"], text_align="center")),
@@ -287,14 +315,30 @@ def get_table_body(order: dict):
         color="#3E2723",
     )
 
+
 def pagination_controls() -> rx.Component:
     return rx.hstack(
-        rx.button(rx.icon("arrow-left", size=22), on_click=OrderView.prev_page, is_disabled=OrderView.offset <= 0, background_color="#3E2723", size="2", variant="solid"),
+        rx.button(
+            rx.icon("arrow-left", size=22),
+            on_click=OrderView.prev_page,
+            is_disabled=OrderView.offset <= 0,
+            background_color="#3E2723",
+            size="2",
+            variant="solid",
+        ),
         rx.text(OrderView.current_page, " de ", OrderView.num_total_pages),
-        rx.button(rx.icon("arrow-right", size=22), on_click=OrderView.next_page, is_disabled=OrderView.offset + OrderView.limit >= OrderView.total_items, background_color="#3E2723", size="2", variant="solid"),
+        rx.button(
+            rx.icon("arrow-right", size=22),
+            on_click=OrderView.next_page,
+            is_disabled=OrderView.offset + OrderView.limit >= OrderView.total_items,
+            background_color="#3E2723",
+            size="2",
+            variant="solid",
+        ),
         justify="center",
         color="#3E2723",
     )
+
 
 @rx.page(on_load=OrderView.load_orders)
 def orders() -> rx.Component:
@@ -315,8 +359,8 @@ def orders() -> rx.Component:
             width="80vw",
         ),
         display="flex",
-        justifyContent="center",
-        alignItems="flex-start",
+        justify_content="center",
+        align_items="flex-start",
         text_align="center",
         background_color="#FDEFEA",
         width="92vw",
