@@ -26,6 +26,7 @@ class AuthState(rx.State):
     roles: list[str] = []
     roles_map: dict = {}
     roles_loaded: bool = False
+    roles_map_reverse: dict = {}
 
 
     def login(self):
@@ -74,6 +75,9 @@ class AuthState(rx.State):
     def set_contact(self, value: str):
         self.contact = value
 
+    def set_ci(self, value: str):
+        self.ci = value
+
     def get_roles(self) -> list[str]:
         roles_result = select_all_roles_service()
         return [rol.description for rol in roles_result]
@@ -88,6 +92,7 @@ class AuthState(rx.State):
         roles_result = select_all_roles_service()
         self.roles = [rol.description for rol in roles_result]
         self.roles_map = {rol.description: rol.id_rol for rol in roles_result}
+        self.roles_map_reverse = {rol.id_rol: rol.description for rol in roles_result}
         self.roles_loaded = True
         print("Lista para el select:", self.roles),
         print("Roles cargados correctamente.")
@@ -120,8 +125,7 @@ class AuthState(rx.State):
             self.error = ""
             yield rx.toast('Usuario registrado!')
             print("Usuario registrado correctamente.")
-            
-            # yield MenuView.MenuView.display_screen("login") 
 
         except Exception as e:
             self.error = f"Error al registrar: {e}"
+

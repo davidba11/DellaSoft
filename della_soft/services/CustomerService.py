@@ -1,4 +1,4 @@
-from ..repositories.CustomerRepository import select_all, select_by_name, select_by_parameter, create_customer, select_by_id, delete_customer, get_total_items, get_customer_section, create_user, select_all_users, select_users_by_parameter, update_customer
+from ..repositories.CustomerRepository import select_all, select_by_name, select_by_parameter, create_customer, select_by_id, delete_customer, get_total_items, get_customer_section, create_user, select_all_users, select_users_by_parameter, update_customer, update_user
 from ..models.CustomerModel import Customer
 from ..services.SystemService import hash_password
 
@@ -52,6 +52,16 @@ def update_customer_service(**kwargs):
     try:
         customer = Customer(**kwargs)
         update_customer(customer)
+        print(customer)
+    except Exception as e:
+        print(e)
+    return customer
+
+def update_user_service(**kwargs):
+    print(kwargs)
+    try:
+        customer = Customer(**kwargs)
+        update_user(customer)
     except Exception as e:
         print(e)
     return customer
