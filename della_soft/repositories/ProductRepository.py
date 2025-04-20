@@ -27,6 +27,23 @@ async def get_product(value: str):
                 Product.product_type.ilike(f"%{value}%"),
             ))
         return session.exec(query).all()
+
+def update_product(product: Product):
+    print(f'product {product}')
+    engine = connect()
+    with Session(engine) as session:
+        query = select(Product).where(Product.id == product.id)
+        c = session.exec(query).first()
+        if c:
+            c.name = product.name
+            c.description = product.description
+            c.product_type = product.product_type
+            c.price = product.price
+            c.stock = product.stock
+            session.add(c)
+            session.commit()
+            query = select(Product)
+            return session.exec(query).all()
     
 def get_by_id(id: int):
     engine = connect()
