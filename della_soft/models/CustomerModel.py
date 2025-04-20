@@ -10,6 +10,9 @@ if TYPE_CHECKING:
 if TYPE_CHECKING:
     from .OrderModel import Order
 
+if TYPE_CHECKING:
+    from .TransactionModel import Transaction
+
 class Customer(rx.Model, table=True):
 
     #Como la clase no se llama igual al archivo que la contiene, se agrega _tablename_
@@ -23,15 +26,20 @@ class Customer(rx.Model, table=True):
     div: int | None = Field(default=None, nullable=True)
     username: str | None = Field(default=None, nullable=True)
     password: str | None = Field(default=None, nullable=True)
-    id_rol: int = Field(foreign_key="rol.id_rol", nullable=True) #Se declara FK de rol
+    id_rol: int = Field(foreign_key="rol.id_rol", nullable=False) #Se declara FK de rol
 
     #Se comenta que un customer puede tener 0 o 1 rol
-    rol: Optional["Rol"] = Relationship(
+    rol: "Rol" = Relationship(
         #Se declara como se llama la relación del otro lado (Debe ser igual a la otra clase)
         back_populates="customers"
     )
 
     orders: Optional [List["Order"]] = Relationship(
+        #Se declara como se llama la relación del otro lado (Debe ser igual a la otra clase)
+        back_populates="customer"
+    )
+
+    transactions: Optional [List["Transaction"]] = Relationship(
         #Se declara como se llama la relación del otro lado (Debe ser igual a la otra clase)
         back_populates="customer"
     )
