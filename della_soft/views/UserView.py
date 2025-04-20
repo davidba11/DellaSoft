@@ -96,7 +96,7 @@ class UserView(rx.State):
     @rx.event
     async def register_and_reload(self):
         yield AuthState.register()
-        await self.load_customers()
+        yield await self.load_customers()
 
     @rx.event
     def prepare_edit_user(self, customer_id: int):
@@ -323,8 +323,7 @@ def create_customer_form() -> rx.Component:
             rx.select(
                 items=AuthState.roles,
                 placeholder="Seleccione un rol",
-                value=UserView.selected_role,
-                on_change=UserView.set_selected_role,
+                on_change=AuthState.set_selected_role,
                 background_color="#3E2723",
                 color="white",
                 width="100%"
