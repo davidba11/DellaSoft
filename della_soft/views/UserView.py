@@ -389,6 +389,12 @@ def update_user_form() -> rx.Component:
     return rx.form(
         rx.vstack(
             # Campos en grilla: Cédula, Nombre, Apellido, Contacto
+            rx.input(
+                name='id', 
+                type="hidden", 
+                value=UserView.id,
+                on_change = lambda value: UserView.set_id(value)
+            ),
             rx.grid(
                 rx.text("Cédula:", color="white"),
                 rx.input(
