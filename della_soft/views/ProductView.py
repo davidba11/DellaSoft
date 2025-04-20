@@ -104,58 +104,89 @@ def search_product_component () ->rx.Component:
 def create_product_form() -> rx.Component:
     return rx.form(
         rx.vstack(
-            rx.hstack(
-                rx.text("Nombre: "),
-                rx.input(placeholder='Nombre', name='name', width="100%", background_color="#3E2723", color="white"),
-                rx.text("Categoría: "),
+            # Nombre y Categoría
+            rx.grid(
+                rx.text("Nombre:", color="white"),
+                rx.input(
+                    placeholder="Nombre",
+                    name="name",
+                    background_color="#3E2723",
+                    placeholder_color="white",
+                    color="white",
+                    width="100%",
+                ),
+                rx.text("Categoría:", color="white"),
                 rx.select(
                     ["Precio Por Kilo", "Precio Fijo"],
                     value=ProductView.value,
                     on_change=ProductView.change_value,
-                    name='product_type', background_color="#3E2723",  placeholder_color="white", color="white"
+                    name="product_type",
+                    background_color="#3E2723",
+                    placeholder_color="white",
+                    color="white",
                 ),
-                align='center',
-                justify='center', 
-                spacing="2",
+                columns="1fr 2fr",
+                gap="3",
+                width="100%",
             ),
-            rx.hstack(
-                rx.text("Precio: "),
-                rx.input(placeholder='Precio', name='price', width="100%",background_color="#3E2723",  placeholder_color="white", color="white"),
-                align='center',
-                justify='center', 
-                spacing="2",
-            ),
-            rx.hstack(
-                rx.vstack(
-                    rx.text("Descripción: "),
-                    rx.text_area(placeholder='Descripción', description='description', name='description', background_color="#3E2723",  placeholder_color="white", color="white"),
+            # Precio
+            rx.grid(
+                rx.text("Precio:", color="white"),
+                rx.input(
+                    placeholder="Precio",
+                    name="price",
+                    background_color="#3E2723",
+                    placeholder_color="white",
+                    color="white",
+                    width="100%",
                 ),
-                align='center',
-                justify='center',
-                spacing="2",
+                columns="1fr 2fr",
+                gap="3",
+                width="100%",
             ),
+            # Descripción
+            rx.grid(
+                rx.text("Descripción:", color="white"),
+                rx.text_area(
+                    placeholder="Descripción",
+                    name="description",
+                    background_color="#3E2723",
+                    placeholder_color="white",
+                    color="white",
+                    width="100%",
+                    rows="3",
+                ),
+                columns="1fr 2fr",
+                gap="3",
+                width="100%",
+            ),
+            rx.divider(color="white"),
+            # Botón Guardar
             rx.dialog.close(
                 rx.button(
-                    'Guardar',
+                    rx.icon("save", size=22),
+                    type="submit",
                     background_color="#3E2723",
-                    type='submit',
-                ),
-            ),   
+                    color="white",
+                    size="2",
+                    variant="solid",
+                )
+            ),
+            spacing="3",
         ),
-        align='center',
-        justify='center',
-        border_radius="20px",
-        padding="20px",
-        on_submit=lambda form_data: ProductView.insert_product_controller(form_data),
+        on_submit=ProductView.insert_product_controller,
+        style={"width": "100%", "gap": "3", "padding": "3"},
         debug=True,
+        align="center",
+        justify="center",
     )
+
 
 def create_product_modal() -> rx.Component:
     return rx.dialog.root(
         rx.dialog.trigger(
             rx.button(
                 rx.icon("plus", size=22),
-                rx.text("Crear", size="3"),
                 background_color="#3E2723",
                 size="2",
                 variant="solid",
@@ -168,16 +199,7 @@ def create_product_modal() -> rx.Component:
                 justify='center',
                 align='center',
                 direction='column',
-                weight="bold",
-                color="#3E2723"
-            ),
-            rx.flex(
-                rx.dialog.close(
-                    rx.button('Cancelar', color_scheme='gray', variant='soft')
-                ),
-                spacing="3",
-                margin_top="16px",
-                justify="end",
+                weight="bold"
             ),
             background_color="#A67B5B",
         ),

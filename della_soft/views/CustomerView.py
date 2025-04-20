@@ -179,7 +179,7 @@ def get_table_header():
         rx.table.column_header_cell('Apellido'),	
         rx.table.column_header_cell('Contacto'),	
         rx.table.column_header_cell('Div'),
-        rx.table.column_header_cell('Accion'), 
+        rx.table.column_header_cell('Acciones'), 
         color="#3E2723",
         background_color="#A67B5B",
     )
@@ -216,25 +216,69 @@ def search_customer_component () ->rx.Component:
 def create_customer_form() -> rx.Component:
     return rx.form(
         rx.vstack(
-            rx.input(placeholder='Cedula', name='ci', background_color="#3E2723",  placeholder_color="white", color="white"),
-            rx.input(placeholder='Nombre', name='first_name', background_color="#3E2723",  placeholder_color="white", color="white"),
-            rx.input(placeholder='Apellido', name='last_name', background_color="#3E2723",  placeholder_color="white", color="white"),
-            rx.input(placeholder='Contacto', name='contact', background_color="#3E2723",  placeholder_color="white", color="white"),
-            rx.input(placeholder='Div', name='div', background_color="#3E2723",  placeholder_color="white", color="white"),
-            rx.dialog.close(rx.button('Guardar', background_color="#3E2723", type='submit')),
-            rx.text(CustomerView.error_message),
-            align='center',
-            justify='center', 
-            spacing="2",
-            
-    ),
-    align='center',
-    justify='center',
-    #direction='column',
-    border_radius="20px",
-    padding="20px",
-    on_submit=CustomerView.create_customer,
-     
+            rx.grid(
+                rx.text("Cédula:", color="white"),
+                rx.input(
+                    placeholder="Cédula",
+                    name="ci",
+                    background_color="#5D4037",
+                    placeholder_color="white",
+                    color="white",
+                ),
+                rx.text("Nombre:", color="white"),
+                rx.input(
+                    placeholder="Nombre",
+                    name="first_name",
+                    background_color="#5D4037",
+                    placeholder_color="white",
+                    color="white",
+                ),
+                rx.text("Apellido:", color="white"),
+                rx.input(
+                    placeholder="Apellido",
+                    name="last_name",
+                    background_color="#5D4037",
+                    placeholder_color="white",
+                    color="white",
+                ),
+                rx.text("Contacto:", color="white"),
+                rx.input(
+                    placeholder="Contacto",
+                    name="contact",
+                    background_color="#5D4037",
+                    placeholder_color="white",
+                    color="white",
+                ),
+                rx.text("Div:", color="white"),
+                rx.input(
+                    placeholder="Div",
+                    name="div",
+                    background_color="#5D4037",
+                    placeholder_color="white",
+                    color="white",
+                ),
+                columns="1fr 2fr",
+                gap="3",
+                width="100%",
+            ),
+            rx.divider(color="white"),
+            # Botón de guardar
+            rx.dialog.close(
+                rx.button(
+                    rx.icon("save", size=22),
+                    type="submit",
+                    background_color="#3E2723",
+                    size="2",
+                    variant="solid",
+                )
+            ),
+            spacing="3",
+        ),
+        on_submit=CustomerView.create_customer,
+        style={"width": "100%", "gap": "3", "padding": "3"},
+        debug=True,
+        align="center",
+        justify="center",
     )
 
 def update_customer_form() -> rx.Component:
@@ -293,7 +337,7 @@ def update_customer_form() -> rx.Component:
                 color="white"
             ),
             rx.dialog.close(
-                rx.button('Actualizar', background_color="#3E2723", type='submit')
+                rx.button(rx.icon("save", size=22), background_color="#3E2723", type='submit')
             ),
             rx.text(CustomerView.error_message),
             align='center',
@@ -311,7 +355,6 @@ def update_customer_form() -> rx.Component:
 def create_customer_dialog_component() -> rx.Component:
     return rx.dialog.root(
         rx.dialog.trigger(rx.button(rx.icon("plus", size=22),
-                rx.text("Crear", size="3"),
                 background_color="#3E2723",
                 size="2",
                 variant="solid",)),
@@ -322,13 +365,9 @@ def create_customer_dialog_component() -> rx.Component:
                 justify='center',
                 align='center',
                 direction='column',
-                weight="bold",
-                color="#3E2723"
+                weight="bold"
             ),
             rx.flex(
-                rx.dialog.close(
-                    rx.button('Cancelar', color_scheme='gray', variant='soft')
-                ),
                 spacing="3",
                 margin_top="16px",
                 justify="end",
@@ -341,8 +380,7 @@ def create_customer_dialog_component() -> rx.Component:
 
 def update_customer_dialog_component(customer) -> rx.Component:
     return rx.dialog.root(
-        rx.dialog.trigger(rx.button(rx.icon("plus", size=22),
-                rx.text("Crear", size="3"),
+        rx.dialog.trigger(rx.button(rx.icon("square-pen", size=22),
                 background_color="#3E2723",
                 size="2",
                 variant="solid",
@@ -355,16 +393,7 @@ def update_customer_dialog_component(customer) -> rx.Component:
                 justify='center',
                 align='center',
                 direction='column',
-                weight="bold",
-                color="#3E2723"
-            ),
-            rx.flex(
-                rx.dialog.close(
-                    rx.button('Cancelar', color_scheme='gray', variant='soft')
-                ),
-                spacing="3",
-                margin_top="16px",
-                justify="end",
+                weight="bold"
             ),
             background_color="#A67B5B",
         ),

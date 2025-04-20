@@ -53,7 +53,7 @@ def get_title():
             high_contrast=True,
             fontFamily="DejaVu Sans Mono",
             width="100%",
-            text_align="center"
+            text_align="left"
         ),
         padding="1em",
         background_color="#FDEFEA",
@@ -68,7 +68,6 @@ def get_menu():
             rx.vstack(
                 rx.icon("notebook-pen", color="#3E2723", size=40, on_click=lambda: MenuView.display_screen("orders_view")),
                 rx.icon("user", color="#3E2723", size=40, on_click=lambda: MenuView.display_screen("customers_view")),
-                # rx.icon("user", color="#3E2727", size=40, on_click=lambda: MenuView.display_screen("users_view")),
                 rx.icon("cake", color="#3E2723", size=40, on_click=lambda: MenuView.display_screen("products_view")),
                 rx.icon("settings", color="#3E2723", size=40, on_click=lambda: MenuView.display_screen("users_view")),
             ),
@@ -90,41 +89,38 @@ def menu() -> rx.Component:
     return rx.hstack(
         get_menu(),
         rx.box(
-            rx.vstack(
-                get_title(),
-                rx.cond(
-                    MenuView.screen == "login",
-                    login_page(),
-                        rx.cond(
-                            AuthState.is_logged_in,
-                            rx.box(
+            get_title(),
+            rx.cond(
+                MenuView.screen == "login",
+                login_page(),
+                    rx.cond(
+                        AuthState.is_logged_in,
+                        rx.box(
+                            rx.cond(
+                                MenuView.screen == "products_view",
+                                products(),
                                 rx.cond(
-                                    MenuView.screen == "products_view",
-                                    products(),
+                                    MenuView.screen == "orders_view",
+                                    orders(),
                                     rx.cond(
-                                        MenuView.screen == "orders_view",
-                                        orders(),
-                                        rx.cond(
-                                            MenuView.screen == "customers_view",
-                                            customers(),
-                                                rx.cond(
-                                                MenuView.screen == "users_view",
-                                                users(),
-                                                products()
-                                                )
-                                        )
+                                        MenuView.screen == "customers_view",
+                                        customers(),
+                                            rx.cond(
+                                            MenuView.screen == "users_view",
+                                            users(),
+                                            products()
+                                            )
                                     )
-                                ),
-                                width="100%",
-                                height="calc(100vh - 5em)",
-                                padding="2em",
-                                overflow="auto"
+                                )
                             ),
-                            rx.text("Por favor inicie sesión para continuar.")
-                        )
-                    )
-                
-            ),
+                            width="100%",
+                            height="calc(100vh - 5em)",
+                            padding="2em",
+                            overflow="auto"
+                        ),
+                        rx.text("Por favor inicie sesión para continuar.")
+                    ),
+                ),
             width="100%",
             height="100vh",
             overflow="hidden"

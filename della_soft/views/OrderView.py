@@ -223,7 +223,7 @@ def get_title() -> rx.Component:
 def search_order_component() -> rx.Component:
     return rx.hstack(
         rx.input(
-            placeholder="Buscar Orden", color="white",
+            placeholder="Buscar Pedido", color="white",
             background_color="#3E2723", on_change=OrderView.load_order_information,
             width="80%"
         ),
@@ -234,7 +234,6 @@ def search_order_component() -> rx.Component:
 def create_order_form() -> rx.Component:
     return rx.form(
         rx.vstack(
-            rx.text("Crear Pedido", size="5", weight="bold", color="white", text_align="center"),
             rx.grid(
                 rx.text("Cliente:"),
                 rx.vstack(
@@ -288,7 +287,7 @@ def create_order_form() -> rx.Component:
             rx.divider(),
             OrderDetails(),
             rx.dialog.close(
-                rx.button(rx.icon("save", size=22), "Guardar", type="submit", background_color="#3E2723", size="2", variant="solid")
+                rx.button(rx.icon("save", size=22), type="submit", background_color="#3E2723", size="2", variant="solid")
             ),
             spacing="3",
         ),
@@ -301,7 +300,7 @@ def create_order_form() -> rx.Component:
 def create_order_modal() -> rx.Component:
     return rx.dialog.root(
         rx.dialog.trigger(
-            rx.button(rx.icon("plus", size=22), rx.text("Crear", size="3"),
+            rx.button(rx.icon("plus", size=22),
                       background_color="#3E2723", size="2", variant="solid",
                       on_click=OrderView.get_system_date)
         ),
@@ -310,10 +309,6 @@ def create_order_modal() -> rx.Component:
                 rx.dialog.title("Crear Pedido"),
                 create_order_form(),
                 direction="column", align="center", justify="center", gap="3"
-            ),
-            rx.flex(
-                rx.dialog.close(rx.button("Cancelar", color_scheme="gray", variant="soft", type="button")),
-                justify="end", spacing="3", margin_top="16px"
             ),
             background_color="#A67B5B", style={"max_width": "900px", "max_height": "600px"}, padding="3"
         ),
@@ -356,13 +351,6 @@ def view_order_modal() -> rx.Component:
                         )
                     ),
                     width="90%", background_color="#FFF8E1", border_radius="8px", margin="auto"
-                ),
-                rx.button(
-                    "Cerrar",
-                    on_click=OrderView.close_view_modal,
-                    background_color="#3E2723",
-                    color="white",
-                    align_self="end"
                 ),
                 spacing="4", align="center", width="100%"
             ),

@@ -39,7 +39,6 @@ class UserView(rx.State):
     password: str = ""
     id_rol: int = -1
     ci: str = ''
-    error_message: str = ""
     selected_role: str = ""
 
     async def load_customers(self):
@@ -222,7 +221,7 @@ def get_table_header():
         rx.table.column_header_cell('Apellido'),	
         rx.table.column_header_cell('Contacto'),
         rx.table.column_header_cell('Usuario'),	
-        rx.table.column_header_cell('Accion'), 
+        rx.table.column_header_cell('Acciones'), 
         color="#3E2723",
         background_color="#A67B5B",
     )
@@ -260,122 +259,126 @@ def search_customer_component () ->rx.Component:
         rx.input(placeholder='Buscar usuario', background_color="#3E2723",  placeholder_color="white", color="white", on_change=UserView.search_on_change)
     )
 
-def create_customer_form() -> rx.Component:
-    return rx.flex(
+def create_user_form() -> rx.Component:
+    return rx.form(
         rx.vstack(
-
-            rx.heading("Registro de Usuario", size="6", color="#3E2723", margin_top="3em"),
-
-            rx.input(
-                placeholder="Cedula",
-                on_change=AuthState.set_ci,
+            # Campos en grilla de 2 columnas
+            rx.grid(
+                rx.text("Cédula:", color="white"),
+                rx.input(
+                    placeholder="Cédula",
+                    name="ci",
+                    on_change=AuthState.set_ci,
+                    background_color="#3E2723",
+                    placeholder_color="white",
+                    color="white",
+                ),
+                rx.text("Nombre:", color="white"),
+                rx.input(
+                    placeholder="Nombre",
+                    name="first_name",
+                    on_change=AuthState.set_first_name,
+                    background_color="#3E2723",
+                    placeholder_color="white",
+                    color="white",
+                ),
+                rx.text("Apellido:", color="white"),
+                rx.input(
+                    placeholder="Apellido",
+                    name="last_name",
+                    on_change=AuthState.set_last_name,
+                    background_color="#3E2723",
+                    placeholder_color="white",
+                    color="white",
+                ),
+                rx.text("Contacto:", color="white"),
+                rx.input(
+                    placeholder="Contacto",
+                    name="contact",
+                    on_change=AuthState.set_contact,
+                    background_color="#3E2723",
+                    placeholder_color="white",
+                    color="white",
+                ),
+                columns="1fr 2fr",
+                gap="3",
                 width="100%",
-                background_color="#3E2723",
-                color="white",
-                placeholder_color="white"
             ),
-            rx.input(
-                placeholder="Nombre",
-                on_change=AuthState.set_first_name,
+            rx.grid(
+                rx.text("Usuario:", color="white"),
+                rx.input(
+                    placeholder="Usuario",
+                    name="username",
+                    on_change=AuthState.set_username,
+                    background_color="#3E2723",
+                    placeholder_color="white",
+                    color="white",
+                ),
+                rx.text("Contraseña:", color="white"),
+                rx.input(
+                    placeholder="Contraseña",
+                    name="password",
+                    type="password",
+                    on_change=AuthState.set_password,
+                    background_color="#3E2723",
+                    placeholder_color="white",
+                    color="white",
+                ),
+                columns="1fr 2fr",
+                gap="3",
                 width="100%",
-                background_color="#3E2723",
-                color="white",
-                placeholder_color="white"
             ),
-
-            rx.input(
-                placeholder="Apellido",
-                on_change=AuthState.set_last_name,
+            rx.grid(
+                rx.text("Rol:", color="white"),
+                rx.select(
+                    items=AuthState.roles,
+                    name="role",
+                    value=UserView.selected_role,
+                    placeholder="Seleccione un rol",
+                    on_change=UserView.set_selected_role,
+                    background_color="#3E2723",
+                    color="white",
+                ),
+                columns="1fr 2fr",
+                gap="3",
                 width="100%",
+            ),
+            rx.divider(color="white"),
+            # Botón de registro
+            rx.button(
+                rx.icon("user-plus", size=22),
+                type="submit",
                 background_color="#3E2723",
                 color="white",
-                placeholder_color="white"
+                size="2",
+                variant="solid",
             ),
-
-            rx.input(
-                placeholder="Contacto",
-                on_change=AuthState.set_contact,
-                width="100%",
-                background_color="#3E2723",
-                color="white",
-                placeholder_color="white"
-            ),
-
-            rx.input(
-                placeholder="Usuario",
-                on_change=AuthState.set_username,
-                width="100%",
-                background_color="#3E2723",
-                color="white",
-                placeholder_color="white"
-            ),
-
-            rx.input(
-                placeholder="Contraseña",
-                type="password",
-                on_change=AuthState.set_password,
-                width="100%",
-                background_color="#3E2723",
-                color="white",
-                placeholder_color="white"
-            ),
-
-            rx.select(
-                items=AuthState.roles,
-                placeholder="Seleccione un rol",
-                value=UserView.selected_role,
-                on_change=UserView.set_selected_role,
-                background_color="#3E2723",
-                color="white",
-                width="100%"
-            ),
-
-            rx.dialog.close(rx.button(
-                rx.hstack(rx.icon("user-plus"), rx.text("Crear")),
-                on_click=UserView.register_and_reload,
-                width="100%",
-                background_color="#3E2723",
-                color="white",
-                
-            )
-            ),
-
+            # Mensaje de error
             rx.cond(AuthState.error != "", rx.text(AuthState.error, color="red")),
-
             spacing="4",
             width="100%",
-            max_width="400px"
+            max_width="400px",
         ),
-        justify="center",
+        on_submit=UserView.register_and_reload,
+        style={"gap": "3", "padding": "3"},
         align="center",
-        height="60vh",
-        width="100%"
-    )
+        justify="center",
+    ),
 
 def create_customer_dialog_component() -> rx.Component:
     return rx.dialog.root(
         rx.dialog.trigger(rx.button(rx.icon("plus", size=22),
-                rx.text("Crear", size="3"),
                 background_color="#3E2723",
                 size="2",
                 variant="solid",)),
         rx.dialog.content(
             rx.flex(
-                #rx.dialog.title('Crear Usuario'),
-                create_customer_form(),  # Formulario de creación de cliente
+                rx.dialog.title('Crear Usuario'),
+                create_user_form(),  # Formulario de creación de cliente
                 justify='center',
                 align='center',
                 direction='column',
-                weight="bold",
-                color="#3E2723"
-            ),
-            rx.flex(
-                rx.dialog.close(
-                    rx.button('Cancelar', color_scheme='gray', variant='soft')
-                ),
-                spacing="3",
-                margin_top="16px",
-                justify="end",
+                weight="bold"
             ),
             background_color="#A67B5B",
         ),
@@ -385,120 +388,138 @@ def create_customer_dialog_component() -> rx.Component:
 def update_user_form() -> rx.Component:
     return rx.form(
         rx.vstack(
-            rx.input(
-                name='id', 
-                type="hidden", 
-                value=UserView.id,
-                on_change = lambda value: UserView.set_id(value)
+            # Campos en grilla: Cédula, Nombre, Apellido, Contacto
+            rx.grid(
+                rx.text("Cédula:", color="white"),
+                rx.input(
+                    placeholder="Cédula",
+                    name="ci",
+                    value=UserView.ci,
+                    on_change=UserView.set_ci,
+                    background_color="#3E2723",
+                    placeholder_color="white",
+                    color="white",
+                ),
+                rx.text("Nombre:", color="white"),
+                rx.input(
+                    placeholder="Nombre",
+                    name="first_name",
+                    value=UserView.first_name,
+                    on_change=UserView.set_first_name,
+                    background_color="#3E2723",
+                    placeholder_color="white",
+                    color="white",
+                ),
+                rx.text("Apellido:", color="white"),
+                rx.input(
+                    placeholder="Apellido",
+                    name="last_name",
+                    value=UserView.last_name,
+                    on_change=UserView.set_last_name,
+                    background_color="#3E2723",
+                    placeholder_color="white",
+                    color="white",
+                ),
+                rx.text("Contacto:", color="white"),
+                rx.input(
+                    placeholder="Contacto",
+                    name="contact",
+                    value=UserView.contact,
+                    on_change=UserView.set_contact,
+                    background_color="#3E2723",
+                    placeholder_color="white",
+                    color="white",
+                ),
+                columns="1fr 2fr",
+                gap="3",
+                width="100%",
             ),
-            rx.input(
-                placeholder='Cédula',
-                name='ci',
-                # is_disabled=True,
-                value=UserView.ci,
-                on_change = UserView.set_ci,
-                background_color="#3E2723",
-                placeholder_color="white",
-                color="white"
+            # Campos en grilla: Usuario y Contraseña
+            rx.grid(
+                rx.text("Usuario:", color="white"),
+                rx.input(
+                    placeholder="Usuario",
+                    name="username",
+                    value=UserView.username,
+                    on_change=UserView.set_username,
+                    background_color="#3E2723",
+                    placeholder_color="white",
+                    color="white",
+                ),
+                rx.text("Contraseña:", color="white"),
+                rx.input(
+                    placeholder="Contraseña",
+                    name="password",
+                    type="password",
+                    value=UserView.password,
+                    on_change=UserView.set_password,
+                    background_color="#3E2723",
+                    placeholder_color="white",
+                    color="white",
+                ),
+                columns="1fr 2fr",
+                gap="3",
+                width="100%",
             ),
-            rx.input(
-                placeholder='Nombre',
-                name='first_name',
-                value=UserView.first_name,
-                on_change=UserView.set_first_name,
-                background_color="#3E2723",
-                placeholder_color="white",
-                color="white"
+            # Selección de rol
+            rx.grid(
+                rx.text("Rol:", color="white"),
+                rx.select(
+                    items=AuthState.roles,
+                    name="role",
+                    value=UserView.selected_role,
+                    placeholder="Seleccione un rol",
+                    on_change=UserView.set_selected_role,
+                    background_color="#3E2723",
+                    color="white",
+                ),
+                columns="1fr 2fr",
+                gap="3",
+                width="100%",
             ),
-            rx.input(
-                placeholder='Apellido',
-                name='last_name',
-                value=UserView.last_name,
-                on_change=UserView.set_last_name,
-                background_color="#3E2723",
-                placeholder_color="white",
-                color="white"
-            ),
-            rx.input(
-                placeholder='Contacto',
-                name='contact',
-                value=UserView.contact,
-                on_change=UserView.set_contact,
-                background_color="#3E2723",
-                placeholder_color="white",
-                color="white"
-            ),
-            rx.input(
-                placeholder='Usuario',
-                name='username',
-                value=UserView.username,
-                on_change=UserView.set_username,
-                background_color="#3E2723",
-                placeholder_color="white",
-                color="white"
-            ),
-            rx.input(
-                placeholder='Contraseña',
-                name='password',
-                type='password',
-                value=UserView.password,
-                on_change=UserView.set_password,
-                background_color="#3E2723",
-                placeholder_color="white",
-                color="white"
-            ),
-           rx.select(
-                items=AuthState.roles,  # lista de descripciones
-                #name="id_rol",
-                placeholder="Seleccione un rol",
-                value=UserView.selected_role,  # string
-                on_change=UserView.set_selected_role,
-                background_color="#3E2723",
-                color="white",
-                width="100%"
-            ),
+            rx.divider(color="white"),
+            # Botón actualizar
             rx.dialog.close(
-                rx.button('Actualizar', background_color="#3E2723", type='submit')
+                rx.button(
+                    rx.icon("save", size=22),
+                    type="submit",
+                    background_color="#3E2723",
+                    color="white",
+                    size="2",
+                    variant="solid",
+                )
             ),
-            rx.text(UserView.error_message),
-            align='center',
-            justify='center',
-            spacing="2"
+            # Mensaje de error
+            rx.cond(
+                UserView.error_message != "",
+                rx.text(UserView.error_message, color="red"),
+            ),
+            spacing="3",
+            width="100%",
+            max_width="400px",
         ),
-        align='center',
-        justify='center',
-        border_radius="20px",
-        padding="20px",
-        on_submit=UserView.update_customer
+        on_submit=UserView.update_customer,
+        style={"width": "100%", "gap": "3", "padding": "3"},
+        align="center",
+        justify="center",
     )
 
 def update_customer_dialog_component(customer) -> rx.Component:
     return rx.dialog.root(
-        rx.dialog.trigger(rx.button(rx.icon("plus", size=22),
-                rx.text("Crear", size="3"),
+        rx.dialog.trigger(rx.button(rx.icon("square-pen", size=22),
                 background_color="#3E2723",
                 size="2",
                 variant="solid",
                 on_click=lambda: UserView.prepare_edit_user(customer.id)
-                
                 )),
         rx.dialog.content(
             rx.flex(
-                rx.dialog.title('Actualizar Cliente'),
+                rx.dialog.title('Actualizar Usuario'),
                 update_user_form(),  # Formulario de creación de cliente
                 justify='center',
                 align='center',
                 direction='column',
-                weight="bold",
-                color="#3E2723"
-            ),
-            rx.flex(
-                rx.dialog.close(
-                    rx.button('Cancelar', color_scheme='gray', variant='soft')
-                ),
-                spacing="3",
-                margin_top="16px",
-                justify="end",
+                weight="bold"
             ),
             background_color="#A67B5B",
         ),
@@ -549,9 +570,6 @@ def delete_user_dialog_component(id: int) -> rx.Component:
             rx.dialog.title('Eliminar Usuario'),
             rx.dialog.description('¿Está seguro que desea eliminar este usuario?'),
             rx.flex(
-                rx.dialog.close(
-                    rx.button('Cancelar', color_scheme='gray', variant='soft')
-                ),
                 rx.dialog.close(
                     rx.button('Confirmar', on_click=UserView.delete_user_by_id(id), background_color="#3E2723",
                 size="2",
