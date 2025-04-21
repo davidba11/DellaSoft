@@ -8,6 +8,7 @@ from .CustomerView import CustomerView, customers
 #from .RegisterView import register_page
 from .UserView import UserView, users
 from .Login import login_page
+from .POSView import POSView, pos_page
 
 from typing import TYPE_CHECKING
 
@@ -33,6 +34,8 @@ class MenuView(rx.State):
             yield UserView.load_customers()  
         if screen == "order_detail":
             yield ProductView.load_products()
+        if screen == "pos_view":
+            yield POSView.load_date()
         if screen == "logout":
             yield AuthState.logout()
         self.screen = screen
@@ -69,6 +72,7 @@ def get_menu():
                 rx.icon("notebook-pen", color="#3E2723", size=40, on_click=lambda: MenuView.display_screen("orders_view")),
                 rx.icon("user", color="#3E2723", size=40, on_click=lambda: MenuView.display_screen("customers_view")),
                 rx.icon("cake", color="#3E2723", size=40, on_click=lambda: MenuView.display_screen("products_view")),
+                rx.icon("circle-dollar-sign", color="#3E2723", size=40, on_click=lambda: MenuView.display_screen("pos_view")),
                 rx.icon("settings", color="#3E2723", size=40, on_click=lambda: MenuView.display_screen("users_view")),
             ),
             rx.icon("log-in", color="#3E2723", size=40, on_click=lambda: MenuView.display_screen("login"))
@@ -100,16 +104,16 @@ def menu() -> rx.Component:
                                 MenuView.screen == "products_view",
                                 products(),
                                 rx.cond(
-                                    MenuView.screen == "orders_view",
-                                    orders(),
+                                    MenuView.screen == "customers_view",
+                                    customers(),
                                     rx.cond(
-                                        MenuView.screen == "customers_view",
-                                        customers(),
-                                            rx.cond(
-                                            MenuView.screen == "users_view",
-                                            users(),
-                                            products()
-                                            )
+                                        MenuView.screen == "users_view",
+                                        users(),
+                                        rx.cond(
+                                            MenuView.screen == "pos_view",
+                                            pos_page(),
+                                            orders()
+                                        ),
                                     )
                                 )
                             ),

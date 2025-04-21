@@ -121,12 +121,6 @@ class CustomerView(rx.State):
             print(e)
             self.error_message = f"Error al actualizar: {e}"
 
-
-    
-
-
-
-
 def get_title():
     return rx.text(
         "Clientes",
