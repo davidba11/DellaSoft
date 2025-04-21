@@ -39,7 +39,6 @@ def update_product(product: Product):
             c.description = product.description
             c.product_type = product.product_type
             c.price = product.price
-            c.stock = product.stock
             session.add(c)
             session.commit()
             query = select(Product)
