@@ -147,11 +147,25 @@ class UserView(rx.State):
 
     @rx.event
     async def update_customer(self, form_data: dict):
-        print(f'Update customer {form_data}')
-        print("🟢 ID de rol antes de guardar:", self.id_rol)
+        try:
+            # Validar rol
+            if self.id_rol is None or self.id_rol <= 0:
+                self.error_message = "Debe seleccionar un rol válido."
+                return
 
-        id_rol_value = self.id_rol
-        if isinstance(id_rol_value, int) and id_rol_value > 0:
+            # Traer datos actuales del usuario
+            from ..services.CustomerService import select_by_id_service
+            current_user = select_by_id_service(int(form_data["id"]))[0]
+
+            # Solo hashear si la contraseña fue modificada
+            if self.password != current_user.password:
+                print("Contraseña modificada. Se aplicará hash.")
+                password_to_save = hash_password(self.password)
+            else:
+                print("Contraseña no modificada.")
+                password_to_save = self.password
+
+            # Ejecutar actualización
             update_user_service(
                 id=int(form_data["id"]),
                 ci=form_data["ci"],
@@ -159,15 +173,16 @@ class UserView(rx.State):
                 last_name=form_data["last_name"],
                 contact=form_data["contact"],
                 username=form_data["username"],
-                id_rol=self.id_rol,
-                password=hash_password(form_data["password"]),
-                
+                password=password_to_save,
+                id_rol=self.id_rol
             )
+
             await self.load_customers()
-            yield rx.toast('Usuario actualizado.')
+            yield rx.toast("Usuario actualizado correctamente.")
             self.error_message = ""
-        else:
-            self.error_message = "Debe seleccionar un rol válido."
+        except Exception as e:
+            print("❌ Error:", e)
+            self.error_message = f"Error al actualizar: {e}"
 
 def get_title():
     return rx.text(
@@ -244,8 +259,9 @@ def get_table_body(customer: Customer):
                 #),
                 rx.cond(
                     AuthState.is_admin,
+                    rx.fragment(
                     update_customer_dialog_component(customer),
-                    delete_user_dialog_component(customer.id))
+                    delete_user_dialog_component(customer.id)))
                 ,
             ),
         ),

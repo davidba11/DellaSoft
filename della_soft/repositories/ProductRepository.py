@@ -40,7 +40,7 @@ def update_product(product: Product):
             c.product_type = product.product_type
             c.price = product.price
             session.add(c)
-            session.commit()
+            session.commit() 
             query = select(Product)
             return session.exec(query).all()
     
