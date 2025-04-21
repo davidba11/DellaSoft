@@ -19,3 +19,9 @@ def get_by_pos_date(value) -> POS | None:
             func.date(POS.pos_date) == fecha
         )
         return session.exec(stmt).first()
+    
+def insert_pos(pos: POS):
+    engine = connect()
+    with Session(engine) as session:
+        session.add(pos)
+        session.commit()

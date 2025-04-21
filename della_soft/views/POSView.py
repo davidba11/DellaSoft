@@ -1,22 +1,48 @@
+# POSView.py
 import reflex as rx
 
 from rxconfig import config
 
-from ..services.SystemService import get_sys_date_two, get_sys_date_to_string_two
-from .. services.POSService import POS_is_open
+from ..services.SystemService import get_sys_date_two, get_sys_date_to_string_two, get_sys_date_three
+from ..services.POSService import POS_is_open, insert_pos_register
 
 class POSView(rx.State):
     sys_date: str
     is_open: bool = False
+    final_amount: float = 0.0
 
     @rx.event
     def load_date(self):
+        # Carga la fecha del sistema y verifica si la caja está abierta
         self.sys_date = get_sys_date_to_string_two()
         record = POS_is_open(get_sys_date_two(self.sys_date))
         self.is_open = record is not None
         self.set()
 
-def get_title():
+    @rx.event
+    def on_initial_amount_change(self, value: str):
+        # Actualiza final_amount cada vez que cambia el monto inicial
+        try:
+            self.final_amount = float(value)
+        except ValueError:
+            self.final_amount = 0.0
+        self.set()
+
+    @rx.var
+    def get_status_label(self) -> str:
+        return "ABIERTO" if self.is_open else "CERRADO"
+    
+    @rx.event
+    async def insert_pos_controller(self, form_data: dict):
+        form_data['pos_date'] = get_sys_date_three(form_data['pos_date'])
+        try:
+            new_pos = insert_pos_register(id="", initial_amount=form_data['initial_amount'], final_amount=form_data['final_amount'], pos_date=form_data['pos_date'])
+            self.load_date()
+        except BaseException as e:
+            print(e.args)
+
+
+def get_title() -> rx.Component:
     return rx.text(
         "Caja",
         size="7",
@@ -27,78 +53,80 @@ def get_title():
         width="80%",
     ),
 
+
 def create_pos_form() -> rx.Component:
     return rx.form(
         rx.vstack(
-            # Nombre y Categoría
+            # Monto Inicial
             rx.grid(
                 rx.text("Monto Inicial:", color="white"),
                 rx.input(
                     placeholder="Monto Inicial",
                     name="initial_amount",
+                    type="number",
                     background_color="#3E2723",
                     placeholder_color="white",
                     color="white",
                     width="100%",
-                    type="number"
+                    on_change=POSView.on_initial_amount_change,
+                    default_value="0"
                 ),
                 columns="1fr 2fr",
                 gap="3",
                 width="100%",
             ),
-            # Precio
+            # Monto Final (read-only, refleja final_amount)
             rx.grid(
                 rx.text("Monto Final:", color="white"),
                 rx.input(
-                    placeholder="Monto Final",
-                    name="price",
-                    background_color="#3E2723",
+                    name="final_amount",
+                    value=POSView.final_amount,
+                    read_only=True,
+                    type="number",
+                    background_color="#5D4037",
                     placeholder_color="white",
                     color="white",
                     width="100%",
-                    type="number",
-                    read_only=True
                 ),
                 columns="1fr 2fr",
                 gap="3",
                 width="100%",
             ),
-            # Descripción
+            # Estado de la caja
             rx.grid(
                 rx.text("Estado:", color="white"),
                 rx.select(
                     ["CERRADO", "ABIERTO"],
-                    value="CERRADO",
-                    #on_change=ProductView.change_value,
-                    name="product_type",
+                    value=POSView.get_status_label,
+                    name="status",
+                    read_only=True,
                     background_color="#3E2723",
                     placeholder_color="white",
                     color="white",
-                    read_only=True
+                    width="100%",
                 ),
                 columns="1fr 2fr",
                 gap="3",
                 width="100%",
             ),
-
+            # Fecha del sistema
             rx.grid(
                 rx.text("Fecha:", color="white"),
                 rx.input(
+                    name="pos_date",
                     value=POSView.sys_date,
-                    placeholder="Monto Final",
-                    name="price",
-                    background_color="#3E2723",
+                    read_only=True,
+                    background_color="#5D4037",
                     placeholder_color="white",
                     color="white",
                     width="100%",
-                    read_only=True
                 ),
                 columns="1fr 2fr",
                 gap="3",
                 width="100%",
             ),
             rx.divider(color="white"),
-            # Botón Guardar
+            # Botón de cierre del modal
             rx.dialog.close(
                 rx.button(
                     rx.icon("save", size=22),
@@ -111,12 +139,13 @@ def create_pos_form() -> rx.Component:
             ),
             spacing="3",
         ),
-        #on_submit=ProductView.insert_product_controller,
-        style={"width": "100%", "gap": "3", "padding": "3"},
-        debug=True,
+        on_submit=POSView.insert_pos_controller,
         align="center",
         justify="center",
+        style={"width": "100%", "gap": "3", "padding": "3"},
+        debug=True,
     )
+
 
 def open_pos_modal() -> rx.Component:
     return rx.dialog.root(
@@ -125,27 +154,27 @@ def open_pos_modal() -> rx.Component:
                 rx.cond(
                     POSView.is_open,
                     rx.text("Ver Caja"),
-                    rx.text("Abrir Caja")
+                    rx.text("Abrir Caja"),
                 ),
                 background_color="#3E2723",
                 size="2",
                 variant="solid",
-                #on_click=POSView.load_date
             )
         ),
         rx.dialog.content(
             rx.flex(
-                rx.dialog.title('Abrir Caja'),
-                create_pos_form(),  # Formulario de creación de producto
-                justify='center',
-                align='center',
-                direction='column',
-                weight="bold"
+                rx.dialog.title("Abrir Caja"),
+                create_pos_form(),
+                direction="column",
+                align="center",
+                justify="center",
+                gap="4",
             ),
             background_color="#A67B5B",
         ),
-        style={"width": "300px"}
+        style={"width": "320px"},
     )
+
 
 @rx.page(on_load=POSView.load_date)
 def pos_page() -> rx.Component:
@@ -153,9 +182,7 @@ def pos_page() -> rx.Component:
         rx.vstack(
             get_title(),
             open_pos_modal(),
-            rx.divider(
-                color_scheme="brown"
-            ),
+            rx.divider(color_scheme="brown"),
             rx.cond(
                 POSView.is_open,
                 rx.text(
@@ -165,7 +192,7 @@ def pos_page() -> rx.Component:
                     color="#3E2723",
                     high_contrast=True,
                     fontFamily="DejaVu Sans Mono",
-                    width="80%"
+                    width="80%",
                 ),
                 rx.text(
                     "-- La caja no está abierta --",
@@ -174,18 +201,18 @@ def pos_page() -> rx.Component:
                     color="#3E2723",
                     high_contrast=True,
                     fontFamily="DejaVu Sans Mono",
-                    width="80%"
+                    width="80%",
                 ),
             ),
-            spacing="5",  # Espaciado entre elementos
+            spacing="5",
             align="center",
             width="80vw",
         ),
         display="flex",
-        justifyContent="center",
-        alignItems="flex-start",
+        justify_content="center",
+        align_items="flex-start",
         text_align="center",
         background_color="#FDEFEA",
         width="92vw",
-        height="80vh"
+        height="80vh",
     )

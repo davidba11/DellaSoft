@@ -15,7 +15,6 @@ class POS(rx.Model, table=True):
     id: int = Field(default=None, primary_key=True, nullable=False) #Se declara como PK
     initial_amount: int = Field(nullable=False)
     final_amount: int = Field(nullable=False)
-    status: str = Field(nullable=False)
     pos_date: datetime | None = Field(default=None, nullable=True)
 
     #Se comenta que un customer puede tener 0 o 1 rol

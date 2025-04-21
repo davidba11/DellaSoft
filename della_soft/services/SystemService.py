@@ -22,3 +22,8 @@ def get_sys_date(date: str):
 def get_sys_date_two(date: str):
     now_dt = datetime.strptime(date, "%d/%m/%Y")
     return now_dt
+
+def get_sys_date_three(date: str):
+    date = date + " 00:00"
+    now_dt = datetime.strptime(date, "%d/%m/%Y %H:%M")
+    return now_dt
