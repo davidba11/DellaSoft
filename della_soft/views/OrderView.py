@@ -618,7 +618,7 @@ def get_table_body(order: dict) -> rx.Component:
                 on_click=lambda: OrderView.open_view_modal(order["id"])
             ),
             rx.button(
-                rx.icon("pencil", size=22),
+                rx.icon("square-pen", size=22),
                 background_color="#3E2723",
                 size="2",
                 variant="solid",
