@@ -3,6 +3,7 @@ import reflex as rx
 from typing import List
 
 from della_soft.services.ProductService import select_all_product_service
+from della_soft.views.generateInvoicePDF import generate_invoice_pdf
 
 from ..models.ProductOrderModel import ProductOrder
 from ..services.ProductOrderService import (
@@ -50,6 +51,7 @@ class OrderView(rx.State):
     sys_date: str
     input_search: str
     modal_total_paid_str: str = ""
+    pdf_url: str = ""
 
     # Paginación
     offset: int = 0
@@ -270,6 +272,19 @@ class OrderView(rx.State):
             detail_state.set()
 
         self.set()
+
+    @rx.event
+    async def generate_invoice_pdf_event(self, order_id: int):
+        from .generateInvoicePDF import generate_invoice_pdf
+        path = generate_invoice_pdf(order_id)
+
+        # Forzar la descarga sin redirigir ni abrir en nueva pestaña
+        yield rx.download(
+            url=path,
+            filename=f"factura_{order_id}.pdf"
+        )
+
+        yield rx.toast("Factura generada con éxito")
 
 
     @rx.event
@@ -624,6 +639,23 @@ def get_table_body(order: dict) -> rx.Component:
                 variant="solid",
                 on_click=lambda: OrderView.edit_order(order["id"])
             ),
+            rx.cond(
+                OrderView.pdf_url != "",
+                rx.link(
+                    rx.icon("file-text", size=22),
+                    href=OrderView.pdf_url,
+                    target="_blank",
+                    on_click=lambda: OrderView.set_pdf_url(""),
+                    style={"marginLeft": "0.5em"},
+                ),
+                rx.button(
+                    rx.icon("file-text", size=22),
+                    on_click=lambda: OrderView.generate_invoice_pdf_event(order["id"]),
+                    background_color="#3E2723",
+                    size="2",
+                    variant="solid",
+                ),
+),
         ),
         color="#3E2723"
     )

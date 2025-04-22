@@ -1,0 +1,3 @@
+[app]
+name = "della_soft"
+static_dir = "public"
