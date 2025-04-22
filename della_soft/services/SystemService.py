@@ -12,5 +12,14 @@ def verify_password(password: str, hashed: str) -> bool:
     return bcrypt.checkpw(password.encode("utf-8"), hashed.encode("utf-8"))
 
 def get_sys_date(date: str):
-    now_dt = datetime.strptime(date, "%d/%m/%Y %H:%M")
-    return now_dt
+    formats = [
+        "%Y-%m-%dT%H:%M",     # ← input de <input type="datetime-local">
+        "%Y-%m-%d %H:%M:%S",  # ← cuando viene de BD
+        "%d/%m/%Y %H:%M",     # ← opcional, manual
+    ]
+    for fmt in formats:
+        try:
+            return datetime.strptime(date, fmt)
+        except ValueError:
+            continue
+    raise ValueError(f"Formato inválido para la fecha: {date}")

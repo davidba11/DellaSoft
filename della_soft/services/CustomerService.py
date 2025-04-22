@@ -84,8 +84,8 @@ def get_total_items_service():
 def get_customer_section_service(offset: int, limit: int):
     return get_customer_section(offset, limit)
 
-def get_customer_id_by_name_service(name: str) -> int:
-    customer = select_by_name(name)  # Busca el cliente por nombre
+async def get_customer_id_by_name_service(name: str) -> int:
+    customer = await select_by_name(name)  # Busca el cliente por nombre
     if customer:
         return customer.id  # Retorna el id del cliente encontrado
     else:

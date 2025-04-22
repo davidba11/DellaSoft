@@ -47,3 +47,11 @@ def insert_order(order: Order) -> Order:
         session.commit()
         session.refresh(order)   # Trae el ID generado por la BD
         return order
+    
+def update_order(order: Order):
+    engine = connect()
+    with Session(engine) as session:
+        merged = session.merge(order)  # merge devuelve la instancia vinculada a la sesión
+        session.commit()
+        session.refresh(merged)       # refrescamos la instancia que sí pertenece a la sesión
+        return merged

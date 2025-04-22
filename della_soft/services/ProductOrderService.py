@@ -17,3 +17,13 @@ def insert_product_order_service(product_order: ProductOrder):
             
 def delete_product_order_service(id: int):
      return delete_product_order(id)
+
+def update_product_orders(order_id: int, new_product_orders: list[ProductOrder]):
+    # Elimina los productos actuales
+    existing = select_by_order_id(order_id)
+    for po in existing:
+        delete_product_order(po.id)
+
+    # Inserta los nuevos
+    for po in new_product_orders:
+        insert_product_order(po)

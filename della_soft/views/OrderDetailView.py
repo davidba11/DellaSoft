@@ -32,21 +32,51 @@ class OrderDetailView(rx.State):
         products = await select_all_product_service()
         self.plain_data = products[:]  # copia completa
         # Inicializar cada contador en 0
+        for p in products:
+            self.product_counts.setdefault(p.id, 0)
+            self.total_items = len(self.plain_data)
+            # Cargar página actual
+            self.data = self.plain_data[self.offset : self.offset + self.limit]
+            self.set()
+
+    @rx.event
+    async def reset_product_counts(self):
+        products = await select_all_product_service()
+        self.plain_data = products[:]
         self.product_counts = {p.id: 0 for p in products}
-        self.total_items = len(self.plain_data)
-        # Cargar página actual
+        self.total_items = len(products)
+        self.offset = 0
+        self.limit = 3
+        self.data = self.plain_data[self.offset : self.offset + self.limit]
+        self.set()
+
+    @rx.event
+    async def preserve_product_counts(self):
+        products = await select_all_product_service()
+
+        if not self.product_counts:
+            # Si está vacío, inicializamos en 0
+            self.product_counts = {p.id: 0 for p in products}
+        else:
+            for p in products:
+                self.product_counts.setdefault(p.id, 0)
+
+        self.plain_data = products
+        self.total_items = len(products)
         self.data = self.plain_data[self.offset : self.offset + self.limit]
         self.set()
 
     async def next_page(self):
         if self.offset + self.limit < self.total_items:
             self.offset += self.limit
-            await self.load_OrderDetails()
+            await self.preserve_product_counts()
+
 
     async def prev_page(self):
         if self.offset > 0:
             self.offset -= self.limit
-            await self.load_OrderDetails()
+            await self.preserve_product_counts()
+
 
     @rx.var
     def num_total_pages(self) -> int:
