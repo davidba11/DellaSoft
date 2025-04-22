@@ -1,23 +1,38 @@
 # POSView.py
+from typing import Optional
 import reflex as rx
 
 from rxconfig import config
 
 from ..services.SystemService import get_sys_date_two, get_sys_date_to_string_two, get_sys_date_three
 from ..services.POSService import POS_is_open, insert_pos_register
+from ..models.POSModel import POS
 
 class POSView(rx.State):
     sys_date: str
     is_open: bool = False
     final_amount: float = 0.0
+    pos: Optional[POS] = None
 
     @rx.event
     def load_date(self):
         # Carga la fecha del sistema y verifica si la caja está abierta
         self.sys_date = get_sys_date_to_string_two()
-        record = POS_is_open(get_sys_date_two(self.sys_date))
-        self.is_open = record is not None
+        self.pos = POS_is_open(get_sys_date_two(self.sys_date))
+        self.is_open = self.pos is not None
         self.set()
+
+    @rx.var
+    def get_initial_amount(self) -> int:
+        return self.pos.initial_amount
+    
+    @rx.var
+    def get_final_amount(self) -> int:
+        return self.pos.final_amount
+    
+    @rx.var
+    def get_earnings(self) -> int:
+        return (self.pos.final_amount - self.pos.initial_amount)
 
     @rx.event
     def on_initial_amount_change(self, value: str):
@@ -60,33 +75,59 @@ def create_pos_form() -> rx.Component:
             # Monto Inicial
             rx.grid(
                 rx.text("Monto Inicial:", color="white"),
-                rx.input(
-                    placeholder="Monto Inicial",
-                    name="initial_amount",
-                    type="number",
-                    background_color="#3E2723",
-                    placeholder_color="white",
-                    color="white",
-                    width="100%",
-                    on_change=POSView.on_initial_amount_change,
-                    default_value="0"
+                rx.cond(
+                    POSView.is_open,
+                    rx.input(
+                        placeholder="Monto Inicial",
+                        name="initial_amount",
+                        type="number",
+                        background_color="#5D4037",
+                        placeholder_color="white",
+                        color="white",
+                        width="100%",
+                        value=POSView.get_initial_amount,
+                        read_only=True,
+                    ),
+                    rx.input(
+                        placeholder="Monto Inicial",
+                        name="initial_amount",
+                        type="number",
+                        background_color="#3E2723",
+                        placeholder_color="white",
+                        color="white",
+                        width="100%",
+                        default_value="0",
+                        on_change=POSView.on_initial_amount_change,
+                    ),
                 ),
                 columns="1fr 2fr",
                 gap="3",
                 width="100%",
             ),
-            # Monto Final (read-only, refleja final_amount)
             rx.grid(
                 rx.text("Monto Final:", color="white"),
-                rx.input(
-                    name="final_amount",
-                    value=POSView.final_amount,
-                    read_only=True,
-                    type="number",
-                    background_color="#5D4037",
-                    placeholder_color="white",
-                    color="white",
-                    width="100%",
+                rx.cond(
+                    POSView.is_open,
+                    rx.input(
+                        name="final_amount",
+                        value=POSView.get_final_amount,
+                        read_only=True,
+                        type="number",
+                        background_color="#5D4037",
+                        placeholder_color="white",
+                        color="white",
+                        width="100%",
+                    ),
+                    rx.input(
+                        name="final_amount",
+                        value=POSView.final_amount,
+                        read_only=True,
+                        type="number",
+                        background_color="#5D4037",
+                        placeholder_color="white",
+                        color="white",
+                        width="100%",
+                    ),
                 ),
                 columns="1fr 2fr",
                 gap="3",
@@ -127,15 +168,35 @@ def create_pos_form() -> rx.Component:
             ),
             rx.divider(color="white"),
             # Botón de cierre del modal
-            rx.dialog.close(
-                rx.button(
-                    rx.icon("save", size=22),
-                    type="submit",
-                    background_color="#3E2723",
-                    color="white",
-                    size="2",
-                    variant="solid",
-                )
+            rx.cond(
+                POSView.is_open,
+                rx.grid(
+                    rx.text("Ganancias del día:", color="white"),
+                    rx.input(
+                        name="earnings",
+                        value=POSView.get_earnings,
+                        read_only=True,
+                        type="number",
+                        background_color="#5D4037",
+                        placeholder_color="white",
+                        color="white",
+                        width="100%",
+                    ),
+                    columns="1fr 2fr",
+                    gap="3",
+                    width="100%",
+                ),
+                # Botón Guardar si está cerrada
+                rx.dialog.close(
+                    rx.button(
+                        rx.icon("save", size=22),
+                        type="submit",
+                        background_color="#3E2723",
+                        color="white",
+                        size="2",
+                        variant="solid",
+                    )
+                ),
             ),
             spacing="3",
         ),
@@ -163,7 +224,11 @@ def open_pos_modal() -> rx.Component:
         ),
         rx.dialog.content(
             rx.flex(
-                rx.dialog.title("Abrir Caja"),
+                rx.cond(
+                    POSView.is_open,
+                    rx.dialog.title("Ver Caja"),
+                    rx.dialog.title("Abrir Caja"),
+                ),
                 create_pos_form(),
                 direction="column",
                 align="center",
