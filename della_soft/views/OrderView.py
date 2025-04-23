@@ -9,54 +9,58 @@ from ..models.ProductOrderModel import ProductOrder
 from ..services.ProductOrderService import (
     insert_product_order_service,
     select_by_order_id_service,
+    update_product_orders,
 )
 from ..repositories.OrderRepository import insert_order
-from ..services.OrderService import select_all_order_service
+from ..services.OrderService import select_all_order_service, update_order_service
 from ..services.CustomerService import select_name_by_id, select_all_customer_service
 from ..services.SystemService import get_sys_date_to_string, get_sys_date
-from ..repositories.ProductRepository import get_by_id, get_product
+from ..repositories.ProductRepository import get_product
 
 from .OrderDetailView import OrderDetailView, OrderDetails
+import os
 from ..models.OrderModel import Order
-
-from ..services.OrderService import update_order_service
-from ..services.ProductOrderService import update_product_orders
-
-
 
 class OrderView(rx.State):
     # Tabla de pedidos
     data: List[dict] = []
-    columns: List[str] = [
+    columns = [
         "Cliente", "Observación", "Total Pedido", "Total Pagado",
-        "Fecha de Ingreso", "Fecha de Entrega", "Acciones"
+        "Fecha de Ingreso", "Fecha de Entrega", "Acciones",
     ]
 
     # Autocomplete clientes
     customer_options: List[str] = []
     _customer_map: dict[str, str] = {}
-    customer_search: str = ""
-    customer_dropdown_open: bool = False
-    selected_customer_label: str = ""
+    customer_search = ""
+    customer_dropdown_open = False
+    selected_customer_label = ""
 
     # Modal de vista de pedido
-    view_modal_open: bool = False
-    edit_modal_open: bool = False  # nuevo modal de edición
+    view_modal_open = False
+    edit_modal_open = False
     modal_order: Order | None = None
-    modal_customer_name: str = ""
-    modal_order_date_str: str = ""
-    modal_delivery_date_str: str = ""
+    modal_customer_name = ""
+    modal_order_date_str = ""
+    modal_delivery_date_str = ""
     modal_order_details: List[dict] = []
+    modal_total_order_str = ""
+    modal_total_paid_str = ""
 
-    sys_date: str
-    input_search: str
-    modal_total_paid_str: str = ""
-    pdf_url: str = ""
+    @rx.var
+    def modal_observation_str(self) -> str:
+        if self.modal_order and self.modal_order.observation:
+            return self.modal_order.observation
+        return ""
 
-    # Paginación
-    offset: int = 0
-    limit: int = 5
-    total_items: int = 0
+    # Búsqueda y paginación
+    sys_date = ""
+    input_search = ""
+    offset = 0
+    limit = 5
+    total_items = 0
+
+    pdf_url = ""
 
     @rx.event
     async def load_customers(self):
@@ -95,33 +99,40 @@ class OrderView(rx.State):
 
     @rx.event
     async def open_view_modal(self, order_id: int):
-        # Fetch all orders and find the one to view
         orders = await select_all_order_service()
         order = next((o for o in orders if o.id == order_id), None)
-        if order:
-            self.modal_order = order
-            self.modal_customer_name = select_name_by_id(order.id_customer)
-            self.modal_order_date_str = (
-                order.order_date.strftime('%Y-%m-%d %H:%M:%S') if order.order_date else ""
-            )
-            self.modal_delivery_date_str = (
-                order.delivery_date.strftime('%Y-%m-%d %H:%M:%S') if order.delivery_date else ""
-            )
-            # <-- Quitamos el await aquí, porque select_by_order_id_service devuelve ya la lista
-            details = select_by_order_id_service(order_id)
-            lst = []
-            for d in details:
-                if d.quantity > 0:
-                    prod = await get_product(d.id_product)
-                    name = prod.name if prod else ""
-                    price = prod.price if prod else 0
-                    lst.append({
-                        "product_name": name,
-                        "quantity": d.quantity,
-                        "price": price,
-                        "subtotal": d.quantity * price,
-                    })
-            self.modal_order_details = lst
+        if not order:
+            return
+
+        # Rellenar datos del modal
+        self.modal_order = order
+        self.modal_customer_name = select_name_by_id(order.id_customer)
+        self.modal_order_date_str = (
+            order.order_date.strftime("%Y-%m-%d %H:%M:%S") if order.order_date else ""
+        )
+        self.modal_delivery_date_str = (
+            order.delivery_date.strftime("%Y-%m-%d %H:%M:%S") if order.delivery_date else ""
+        )
+        self.modal_total_order_str = f"{order.total_order}"
+        self.modal_total_paid_str = f"{order.total_paid}"
+
+        # Sólo detalles con cantidad > 0
+        details = select_by_order_id_service(order_id)
+        products = await select_all_product_service()
+        lst = []
+        for d in details:
+            if d.quantity > 0:
+                prod = next((p for p in products if p.id == d.id_product), None)
+                name = prod.name if prod else ""
+                price = prod.price if prod else 0
+                lst.append({
+                    "product_name": name,
+                    "quantity": d.quantity,
+                    "price": price,
+                    "subtotal": d.quantity * price,
+                })
+        self.modal_order_details = lst
+
         self.view_modal_open = True
         self.set()
 
@@ -138,11 +149,11 @@ class OrderView(rx.State):
                 "id": o.id,
                 "id_customer": o.id_customer,
                 "customer_name": select_name_by_id(o.id_customer),
-                "observation": o.observation,
+                "observation": o.observation or "",
                 "total_order": o.total_order,
                 "total_paid": o.total_paid,
-                "order_date": o.order_date.strftime('%Y-%m-%d %H:%M:%S') if o.order_date else "",
-                "delivery_date": o.delivery_date.strftime('%Y-%m-%d %H:%M:%S') if o.delivery_date else ""
+                "order_date": o.order_date.strftime("%Y-%m-%d %H:%M:%S") if o.order_date else "",
+                "delivery_date": o.delivery_date.strftime("%Y-%m-%d %H:%M:%S") if o.delivery_date else "",
             })
         self.total_items = len(lst)
         return lst[self.offset : self.offset + self.limit]
@@ -172,38 +183,46 @@ class OrderView(rx.State):
     def current_page(self) -> int:
         return (self.offset // self.limit) + 1
 
-    async def get_order(self):
-        orders = await select_all_order_service()
-        self.data = [{
-            "id": o.id,
-            "id_customer": o.id_customer,
-            "customer_name": select_name_by_id(o.id_customer),
-            "observation": o.observation,
-            "total_order": o.total_order,
-            "total_paid": o.total_paid,
-            "order_date": o.order_date.strftime('%Y-%m-%d %H:%M:%S') if o.order_date else "",
-            "delivery_date": o.delivery_date.strftime('%Y-%m-%d %H:%M:%S') if o.delivery_date else ""
-        } for o in orders if str(o.id) == self.input_search]
-        self.total_items = len(self.data)
-        self.offset = 0
-        self.data = self.data[: self.limit]
-        self.set()
-
+    @rx.event
     async def load_order_information(self, value: str):
-        self.input_search = value.strip()
+        self.input_search = (value or "").strip()
         await self.get_order()
 
-    @rx.var
-    def total_paid_str(self) -> str:
-        if self.modal_order and self.modal_order.total_paid is not None:
-            return str(self.modal_order.total_paid)
-        return ""
+    async def get_order(self):
+        orders = await select_all_order_service()
+        q = (self.input_search or "").lower()
+        resultados = []
+        for o in orders:
+            cliente = select_name_by_id(o.id_customer) or ""
+            obs     = o.observation or ""
+            fecha_o = o.order_date.strftime("%Y-%m-%d %H:%M:%S") if o.order_date else ""
+            fecha_d = o.delivery_date.strftime("%Y-%m-%d %H:%M:%S") if o.delivery_date else ""
+            campos = [
+                str(o.id), cliente, obs,
+                f"{o.total_order}", f"{o.total_paid}",
+                fecha_o, fecha_d,
+            ]
+            if any(q in campo.lower() for campo in campos):
+                resultados.append({
+                    "id": o.id,
+                    "id_customer": o.id_customer,
+                    "customer_name": cliente,
+                    "observation": obs,
+                    "total_order": o.total_order,
+                    "total_paid": o.total_paid,
+                    "order_date": fecha_o,
+                    "delivery_date": fecha_d,
+                })
+        self.total_items = len(resultados)
+        self.offset = 0
+        self.data = resultados[self.offset : self.offset + self.limit]
+        self.set()
 
     @rx.event
     async def insert_order_controller(self, form_data: dict):
         sel = form_data.get("id_customer", "")
         form_data["id_customer"] = int(self._customer_map.get(sel, sel))
-        form_data['order_date'] = get_sys_date(form_data['order_date'])
+        form_data["order_date"] = get_sys_date(form_data["order_date"])
         order_save = Order(
             id=None,
             id_customer=form_data["id_customer"],
@@ -227,140 +246,103 @@ class OrderView(rx.State):
     async def edit_order(self, order_id: int):
         orders = await select_all_order_service()
         order = next((o for o in orders if o.id == order_id), None)
+        if not order:
+            return
 
-        if order:
-            self.modal_order = order
-            self.modal_total_paid_str = str(order.total_paid) if order.total_paid is not None else ""
-            self.modal_customer_name = select_name_by_id(order.id_customer)
-            self.modal_order_date_str = (
-                order.order_date.strftime('%Y-%m-%d %H:%M:%S') if order.order_date else ""
-)
-            self.modal_delivery_date_str = (
-                order.delivery_date.strftime('%Y-%m-%d %H:%M:%S') if order.delivery_date else ""
-            )
-            detail_state = await self.get_state(OrderDetailView)
-            # 1. Cargar productos
-            products = await select_all_product_service()
-            detail_state.plain_data = products[:]
-            detail_state = await self.get_state(OrderDetailView)
-            detail_state.product_counts = {p.id: 0 for p in products}
-            detail_state.total_items = len(products)
-            detail_state.offset = 0
-            detail_state.limit = 3
-            detail_state.data = products[:detail_state.limit]
+        self.modal_order = order
+        self.modal_customer_name = select_name_by_id(order.id_customer)
+        self.modal_order_date_str = (
+            order.order_date.strftime("%Y-%m-%d %H:%M:%S") if order.order_date else ""
+        )
+        self.modal_delivery_date_str = (
+            order.delivery_date.strftime("%Y-%m-%d %H:%M:%S") if order.delivery_date else ""
+        )
+        self.modal_total_paid_str = f"{order.total_paid}"
 
-            # Cargar cantidades desde los detalles del pedido
-            details = select_by_order_id_service(order_id)
-            for d in details:
-                prod = next((p for p in products if p.id == d.id_product), None)
-                if prod:
-                    detail_state.product_counts[prod.id] = d.quantity
+        detail_state = await self.get_state(OrderDetailView)
+        products = await select_all_product_service()
+        detail_state.plain_data = products[:]
+        detail_state.product_counts = {p.id: 0 for p in products}
+        detail_state.total_items = len(products)
+        detail_state.offset = 0
+        detail_state.limit = 3
+        detail_state.data = products[:detail_state.limit]
 
-            detail_state.set()
-    
+        details = select_by_order_id_service(order_id)
+        for d in details:
+            prod = next((p for p in products if p.id == d.id_product), None)
+            if prod:
+                detail_state.product_counts[prod.id] = d.quantity
+        detail_state.set()
+
         self.edit_modal_open = True
         self.set()
-
 
     @rx.event
     async def set_edit_modal_open(self, is_open: bool):
         self.edit_modal_open = is_open
-
-        # Si se cierra el modal, limpiamos los productos
         if not is_open:
             detail_state = await self.get_state(OrderDetailView)
             detail_state.set()
-
         self.set()
 
     @rx.event
     async def generate_invoice_pdf_event(self, order_id: int):
-        from .generateInvoicePDF import generate_invoice_pdf
         path = generate_invoice_pdf(order_id)
-
-        # Forzar la descarga sin redirigir ni abrir en nueva pestaña
-        yield rx.download(
-            url=path,
-            filename=f"factura_{order_id}.pdf"
-        )
-
+        with open(path, "rb") as f:
+            pdf_bytes = f.read()
+        yield rx.download(data=pdf_bytes, filename=f"factura_{order_id}.pdf")
         yield rx.toast("Factura generada con éxito")
+
 
 
     @rx.event
     async def update_order_controller(self, form_data: dict):
-        # Convertir id_cliente (ya viene en hidden input como número)
         form_data["id_customer"] = int(form_data["id_customer"])
-
-        # Obtener el estado de los productos
         detail_state = await self.get_state(OrderDetailView)
-        detail_state.set()  # Asegura que el estado esté actualizado en memoria
+        detail_state.set()
 
-        # Validar que haya productos cargados
-        if not detail_state.plain_data or not detail_state.product_counts:
-            print("❌ No hay productos o cantidades")
-            return
-
-        # Calcular el total del pedido y preparar nuevos productos
         total = 0
         new_products = []
-
         for p in detail_state.plain_data:
             qty = detail_state.product_counts.get(p.id, 0)
             if qty > 0:
                 subtotal = p.price * qty
                 total += subtotal
                 new_products.append(ProductOrder(
-                    id=None,
-                    quantity=qty,
-                    id_product=p.id,
-                    id_order=self.modal_order.id
+                    id=None, quantity=qty, id_product=p.id, id_order=self.modal_order.id
                 ))
 
         if not new_products:
             print("❌ No se seleccionaron productos válidos.")
             return
 
-        # Usar la fecha original del pedido (no editable)
-        form_data["order_date"] = self.modal_order.order_date
-
-        # Parsear fecha de entrega si viene como string
         from ..services.SystemService import get_sys_date
         form_data["delivery_date"] = get_sys_date(form_data["delivery_date"])
         form_data["total_paid"] = float(form_data.get("total_paid", 0) or 0)
-        # Crear instancia actualizada
+
         updated_order = Order(
             id=self.modal_order.id,
             id_customer=form_data["id_customer"],
             observation=form_data["observation"],
             total_order=total,
             total_paid=form_data["total_paid"],
-            order_date=form_data["order_date"],
+            order_date=self.modal_order.order_date,
             delivery_date=form_data["delivery_date"],
         )
-
 
         update_order_service(updated_order)
         update_product_orders(self.modal_order.id, new_products)
 
-        # Cerrar modal de edición
         self.edit_modal_open = False
-
-        # Mensaje de éxito
-        yield rx.toast('Pedido actualizado con exito')
-
-        # Refrescar pedidos
+        yield rx.toast("Pedido actualizado con éxito")
         yield OrderView.load_orders()
         self.set()
-
-
 
     def get_system_date(self):
         self.sys_date = get_sys_date_to_string()
         yield OrderDetailView.reset_product_counts()
         yield OrderView.load_customers()
-
-    
 
 
 def get_title() -> rx.Component:
@@ -373,11 +355,16 @@ def get_title() -> rx.Component:
 def search_order_component() -> rx.Component:
     return rx.hstack(
         rx.input(
-            placeholder="Buscar Pedido", color="white",
-            background_color="#3E2723", on_change=OrderView.load_order_information,
-            width="80%"
+            name="search",
+            value=OrderView.input_search,
+            placeholder="Buscar Pedido",
+            background_color="#3E2723",
+            color="white",
+            on_change=OrderView.load_order_information,
+            width="80%",
         ),
-        justify="center", spacing="2"
+        justify="center",
+        spacing="2",
     )
 
 
@@ -415,61 +402,104 @@ def create_order_form() -> rx.Component:
                                 border_radius="0 0 8px 8px",
                                 max_height="160px",
                                 overflow_y="auto",
-                                style={"position": "absolute", "top": "100%", "left": 0, "right": 0, "z_index": 1000},
+                                style={
+                                    "position": "absolute",
+                                    "top": "100%",
+                                    "left": 0,
+                                    "right": 0,
+                                    "z_index": 1000,
+                                },
                             ),
                         ),
                         style={"position": "relative", "width": "100%"},
                     ),
-                    rx.input(name="id_customer", type="hidden", value=OrderView.selected_customer_label),
+                    rx.input(
+                        name="id_customer",
+                        type="hidden",
+                        value=OrderView.selected_customer_label,
+                    ),
                 ),
-                rx.text("Observación:"), rx.text_area(name="observation", background_color="#5D4037", color="white", rows="3"),
-                columns="1fr 2fr", gap="3", width="100%",
+                rx.text("Observación:"),
+                rx.text_area(name="observation", background_color="#5D4037", color="white", rows="3"),
+                columns="1fr 2fr",
+                gap="3",
+                width="100%",
             ),
             rx.grid(
-                rx.text("Total Pedido:"), rx.input(name="total_order", value=OrderDetailView.total, background_color="#5D4037", color="white", read_only=True),
-                rx.text("Total Pagado:"), rx.input(name="total_paid", background_color="#5D4037", color="white"),
-                columns="1fr 2fr", gap="3", width="100%",
-            ),            rx.grid(
-                rx.text("Fecha de Ingreso:"), rx.input(value=OrderView.sys_date, name="order_date", read_only=True, background_color="#5D4037", color="white"),
-                rx.text("Fecha de Entrega:"), rx.input(name="delivery_date", type="datetime-local", background_color="#5D4037", color="white"),
-                columns="1fr 2fr", gap="3", width="100%",
+                rx.text("Total Pedido:"),
+                rx.input(
+                    name="total_order",
+                    value=OrderDetailView.total,
+                    read_only=True,
+                    background_color="#5D4037",
+                    color="white",
+                ),
+                rx.text("Total Pagado:"),
+                rx.input(name="total_paid", background_color="#5D4037", color="white"),
+                columns="1fr 2fr",
+                gap="3",
+                width="100%",
+            ),
+            rx.grid(
+                rx.text("Fecha de Ingreso:"),
+                rx.input(
+                    value=OrderView.sys_date,
+                    name="order_date",
+                    read_only=True,
+                    background_color="#5D4037",
+                    color="white",
+                ),
+                rx.text("Fecha de Entrega:"),
+                rx.input(
+                    name="delivery_date",
+                    type="datetime-local",
+                    background_color="#5D4037",
+                    color="white",
+                ),
+                columns="1fr 2fr",
+                gap="3",
+                width="100%",
             ),
             rx.divider(),
             OrderDetails(),
             rx.dialog.close(
-                rx.button(rx.icon("save", size=22), type="submit", background_color="#3E2723", size="2", variant="solid")
+                rx.button(
+                    rx.icon("save", size=22),
+                    type="submit",
+                    background_color="#3E2723",
+                    size="2",
+                    variant="solid",
+                )
             ),
             spacing="3",
         ),
         on_submit=OrderView.insert_order_controller,
         style={"width": "100%", "gap": "3", "padding": "3"},
-        debug=True, align="center", justify="center"
+        debug=True,
+        align="center",
+        justify="center",
     )
+
 
 def edit_order_form() -> rx.Component:
     return rx.form(
         rx.vstack(
-            # input oculto que pasa el ID real al controller
-            rx.input(
-                name="id_customer",
-                type="hidden",
-                value=OrderView.modal_order.id_customer,
-            ),
+            rx.input(name="id_customer", type="hidden", value=OrderView.modal_order.id_customer),
             rx.grid(
                 rx.text("Cliente:"),
                 rx.input(
                     value=OrderView.modal_customer_name,
+                    read_only=True,
                     background_color="#5D4037",
                     color="white",
-                    read_only=True
                 ),
                 rx.text("Observación:"),
                 rx.text_area(
                     name="observation",
+                    rows="3",
+                    default_value=OrderView.modal_order.observation,
                     background_color="#5D4037",
                     color="white",
-                    rows="3",
-                    default_value=OrderView.modal_order.observation  # editable
                 ),
                 columns="1fr 2fr",
                 gap="3",
@@ -480,18 +510,17 @@ def edit_order_form() -> rx.Component:
                 rx.input(
                     name="total_order",
                     value=OrderDetailView.total,
+                    read_only=True,
                     background_color="#5D4037",
                     color="white",
-                    read_only=True
                 ),
                 rx.text("Total Pagado:"),
                 rx.input(
                     name="total_paid",
                     type="number",
-                    default_value=OrderView.total_paid_str,
-
+                    default_value=OrderView.modal_total_paid_str,
                     background_color="#5D4037",
-                    color="white"
+                    color="white",
                 ),
                 columns="1fr 2fr",
                 gap="3",
@@ -504,15 +533,15 @@ def edit_order_form() -> rx.Component:
                     value=OrderView.modal_order_date_str,
                     read_only=True,
                     background_color="#5D4037",
-                    color="white"
+                    color="white",
                 ),
                 rx.text("Fecha de Entrega:"),
                 rx.input(
                     name="delivery_date",
                     type="datetime-local",
-                    default_value=OrderView.modal_delivery_date_str.replace(" ", "T"),  # editable
+                    default_value=OrderView.modal_delivery_date_str.replace(" ", "T"),
                     background_color="#5D4037",
-                    color="white"
+                    color="white",
                 ),
                 columns="1fr 2fr",
                 gap="3",
@@ -527,7 +556,7 @@ def edit_order_form() -> rx.Component:
                     type="submit",
                     background_color="#3E2723",
                     size="2",
-                    variant="solid"
+                    variant="solid",
                 )
             ),
             spacing="3",
@@ -536,25 +565,33 @@ def edit_order_form() -> rx.Component:
         style={"width": "100%", "gap": "3", "padding": "3"},
         debug=True,
         align="center",
-        justify="center"
+        justify="center",
     )
-
 
 
 def create_order_modal() -> rx.Component:
     return rx.dialog.root(
         rx.dialog.trigger(
-            rx.button(rx.icon("plus", size=22),
-                      background_color="#3E2723", size="2", variant="solid",
-                      on_click=OrderView.get_system_date)
+            rx.button(
+                rx.icon("plus", size=22),
+                background_color="#3E2723",
+                size="2",
+                variant="solid",
+                on_click=OrderView.get_system_date,
+            )
         ),
         rx.dialog.content(
             rx.flex(
                 rx.dialog.title("Crear Pedido"),
                 create_order_form(),
-                direction="column", align="center", justify="center", gap="3"
+                direction="column",
+                align="center",
+                justify="center",
+                gap="3",
             ),
-            background_color="#A67B5B", style={"max_width": "900px", "max_height": "600px"}, padding="3"
+            background_color="#A67B5B",
+            style={"max_width": "900px", "max_height": "600px"},
+            padding="3",
         ),
         style={"max_width": "900px", "max_height": "300px", "margin": "auto"},
     )
@@ -566,13 +603,22 @@ def view_order_modal() -> rx.Component:
             rx.vstack(
                 rx.text("Detalle del Pedido", size="5", weight="bold", color="#3E2723", text_align="center"),
                 rx.grid(
-                    rx.text("Cliente:", weight="bold", color="#3E2723"), rx.text(OrderView.modal_customer_name, color="#3E2723"),
-                    rx.text("Observación:", weight="bold", color="#3E2723"), rx.text(OrderView.modal_order.observation, color="#3E2723"),
-                    rx.text("Total Pedido:", weight="bold", color="#3E2723"), rx.text(OrderView.modal_order.total_order.to_string(), color="#3E2723"),
-                    rx.text("Total Pagado:", weight="bold", color="#3E2723"), rx.text(OrderView.modal_order.total_paid.to_string(), color="#3E2723"),
-                    rx.text("Fecha de Ingreso:", weight="bold", color="#3E2723"), rx.text(OrderView.modal_order_date_str, color="#3E2723"),
-                    rx.text("Fecha de Entrega:", weight="bold", color="#3E2723"), rx.text(OrderView.modal_delivery_date_str, color="#3E2723"),
-                    columns="repeat(2,1fr)", gap="2", width="100%", justify_items="start"
+                    rx.text("Cliente:", weight="bold", color="#3E2723"),
+                    rx.text(OrderView.modal_customer_name, color="#3E2723"),
+                    rx.text("Observación:", weight="bold", color="#3E2723"),
+                    rx.text(OrderView.modal_observation_str, color="#3E2723"),
+                    rx.text("Total Pedido:", weight="bold", color="#3E2723"),
+                    rx.text(OrderView.modal_total_order_str, color="#3E2723"),
+                    rx.text("Total Pagado:", weight="bold", color="#3E2723"),
+                    rx.text(OrderView.modal_total_paid_str, color= "#3E2723"),
+                    rx.text("Fecha de Ingreso:", weight="bold", color= "#3E2723"),
+                    rx.text(OrderView.modal_order_date_str, color= "#3E2723"),
+                    rx.text("Fecha de Entrega:", weight="bold", color= "#3E2723"),
+                    rx.text(OrderView.modal_delivery_date_str, color="#3E2723"),
+                    columns="repeat(2,1fr)",
+                    gap="2",
+                    width="100%",
+                    justify_items="start",
                 ),
                 rx.table.root(
                     rx.table.header(
@@ -580,64 +626,73 @@ def view_order_modal() -> rx.Component:
                         rx.table.column_header_cell("Cantidad"),
                         rx.table.column_header_cell("Precio"),
                         rx.table.column_header_cell("Subtotal"),
-                        background_color="#A67B5B", color="white", text_align="center"
+                        background_color="#A67B5B",
+                        color="white",
+                        text_align="center",
                     ),
                     rx.table.body(
                         rx.foreach(
                             OrderView.modal_order_details,
                             lambda d: rx.table.row(
                                 rx.table.cell(rx.text(d["product_name"], text_align="center")),
-                                rx.table.cell(rx.text(str(d["quantity"]), text_align="center")),
-                                rx.table.cell(rx.text(str(d["price"]), text_align="center")),
-                                rx.table.cell(rx.text(str(d["subtotal"]), text_align="center")),
-                                color="#3E2723"
-                            )
+                                rx.table.cell(rx.text(d["quantity"], text_align="center")),
+                                rx.table.cell(rx.text(d["price"], text_align="center")),
+                                rx.table.cell(rx.text(d["subtotal"], text_align="center")),
+                                color="#3E2723",
+                            ),
                         )
                     ),
-                    width="90%", background_color="#FFF8E1", border_radius="8px", margin="auto"
+                    width="90%",
+                    background_color="#FFF8E1",
+                    border_radius="8px",
+                    margin="auto",
                 ),
-                spacing="4", align="center", width="100%"
+                spacing="4",
+                align="center",
+                width="100%",
             ),
-            background_color="#FDEFEA", padding="4", border_radius="8px", style={"max_width":"600px","margin":"auto"}
+            background_color="#FDEFEA",
+            padding="4",
+            border_radius="8px",
+            style={"max_width":"600px","margin":"auto"},
         ),
         open=OrderView.view_modal_open,
-        on_open_change=OrderView.close_view_modal
+        on_open_change=OrderView.close_view_modal,
     )
 
 
 def get_table_header() -> rx.Component:
     return rx.table.row(
+        rx.table.column_header_cell("ID"),
         rx.table.column_header_cell("Cliente"),
-        rx.table.column_header_cell("Observación"),
         rx.table.column_header_cell("Total Pedido"),
-        rx.table.column_header_cell("Total Pagado"),
-        rx.table.column_header_cell("Fecha de Ingreso"),
         rx.table.column_header_cell("Fecha de Entrega"),
         rx.table.column_header_cell("Acciones"),
-        color="#3E2723", background_color="#A67B5B"
+        color="#3E2723",
+        background_color="#A67B5B",
     )
 
 
 def get_table_body(order: dict) -> rx.Component:
     return rx.table.row(
-        rx.table.cell(rx.text(order["customer_name"], text_align="center")),
-        rx.table.cell(rx.text(order["observation"], text_align="center")),
-        rx.table.cell(rx.text(order["total_order"], text_align="center")),
-        rx.table.cell(rx.text(order["total_paid"], text_align="center")),
-        rx.table.cell(rx.text(order["order_date"], text_align="center")),
-        rx.table.cell(rx.text(order["delivery_date"], text_align="center")),
+        rx.table.cell(rx.text(order["id"])),
+        rx.table.cell(rx.text(order["customer_name"])),
+        rx.table.cell(rx.text(order["total_order"])),
+        rx.table.cell(rx.text(order["delivery_date"])),
         rx.table.cell(
             rx.button(
                 rx.icon("eye", size=22),
-                background_color="#3E2723", size="2", variant="solid",
-                on_click=lambda: OrderView.open_view_modal(order["id"])
+                background_color="#3E2723",
+                size="2",
+                variant="solid",
+                on_click=lambda: OrderView.open_view_modal(order["id"]),
             ),
             rx.button(
                 rx.icon("square-pen", size=22),
                 background_color="#3E2723",
                 size="2",
                 variant="solid",
-                on_click=lambda: OrderView.edit_order(order["id"])
+                on_click=lambda: OrderView.edit_order(order["id"]),
             ),
             rx.cond(
                 OrderView.pdf_url != "",
@@ -655,22 +710,35 @@ def get_table_body(order: dict) -> rx.Component:
                     size="2",
                     variant="solid",
                 ),
-),
+            ),
         ),
-        color="#3E2723"
+        color="#3E2723",
     )
 
 
 def pagination_controls() -> rx.Component:
     return rx.hstack(
-        rx.button(rx.icon("arrow-left", size=22), on_click=OrderView.prev_page,
-                  is_disabled=OrderView.offset <= 0, background_color="#3E2723", size="2", variant="solid"),
+        rx.button(
+            rx.icon("arrow-left", size=22),
+            on_click=OrderView.prev_page,
+            is_disabled=OrderView.offset <= 0,
+            background_color="#3E2723",
+            size="2",
+            variant="solid",
+        ),
         rx.text(OrderView.current_page, " de ", OrderView.num_total_pages),
-        rx.button(rx.icon("arrow-right", size=22), on_click=OrderView.next_page,
-                  is_disabled=OrderView.offset + OrderView.limit >= OrderView.total_items,
-                  background_color="#3E2723", size="2", variant="solid"),
-        justify="center", color="#3E2723"
+        rx.button(
+            rx.icon("arrow-right", size=22),
+            on_click=OrderView.next_page,
+            is_disabled=OrderView.offset + OrderView.limit >= OrderView.total_items,
+            background_color="#3E2723",
+            size="2",
+            variant="solid",
+        ),
+        justify="center",
+        color="#3E2723",
     )
+
 
 def edit_order_modal() -> rx.Component:
     return rx.dialog.root(
@@ -681,15 +749,14 @@ def edit_order_modal() -> rx.Component:
                 direction="column",
                 align="center",
                 justify="center",
-                gap="3"
+                gap="3",
             ),
             background_color="#A67B5B",
-            style={"max_width": "900px", "max_height": "600px"},
-            padding="3"
+            style={"max_width":"900px","max_height":"600px"},
+            padding="3",
         ),
-        open=OrderView.edit_modal_open,  # ← usa su propio estado
-        on_open_change=OrderView.set_edit_modal_open
-
+        open=OrderView.edit_modal_open,
+        on_open_change=OrderView.set_edit_modal_open,
     )
 
 
@@ -704,11 +771,20 @@ def orders() -> rx.Component:
             rx.table.root(
                 rx.table.header(get_table_header()),
                 rx.table.body(rx.foreach(OrderView.data, get_table_body)),
-                width="80vw", background_color="#FFF8E1", border_radius="20px"
+                width="80vw",
+                background_color="#FFF8E1",
+                border_radius="20px",
             ),
             pagination_controls(),
-            spacing="5", align="center", width="80vw"
+            spacing="5",
+            align="center",
+            width="80vw",
         ),
-        display="flex", justify_content="center", align_items="flex-start",
-        text_align="center", background_color="#FDEFEA", width="92vw", height="80vh"
+        display="flex",
+        justify_content="center",
+        align_items="flex-start",
+        text_align="center",
+        background_color="#FDEFEA",
+        width="92vw",
+        height="80vh",
     )
