@@ -154,6 +154,7 @@ class OrderView(rx.State):
                 "total_paid": o.total_paid,
                 "order_date": o.order_date.strftime("%Y-%m-%d %H:%M:%S") if o.order_date else "",
                 "delivery_date": o.delivery_date.strftime("%Y-%m-%d %H:%M:%S") if o.delivery_date else "",
+                "pending": o.total_order - o.total_paid,
             })
         self.total_items = len(lst)
         return lst[self.offset : self.offset + self.limit]
@@ -197,11 +198,20 @@ class OrderView(rx.State):
             obs     = o.observation or ""
             fecha_o = o.order_date.strftime("%Y-%m-%d %H:%M:%S") if o.order_date else ""
             fecha_d = o.delivery_date.strftime("%Y-%m-%d %H:%M:%S") if o.delivery_date else ""
+            # calculamos el estado que mostramos en la columna ¿Pagado Totalmente?
+            estado = "PAGADO" if o.total_paid == o.total_order else "FALTA PAGO"
+            # armamos la lista de campos para buscar
             campos = [
-                str(o.id), cliente, obs,
-                f"{o.total_order}", f"{o.total_paid}",
-                fecha_o, fecha_d,
+                str(o.id),
+                cliente,
+                obs,
+                f"{o.total_order}",
+                f"{o.total_paid}",
+                estado,            # <-- aquí lo añadimos
+                fecha_o,
+                fecha_d,
             ]
+            # si coincide en alguno, lo añadimos a resultados
             if any(q in campo.lower() for campo in campos):
                 resultados.append({
                     "id": o.id,
@@ -210,13 +220,14 @@ class OrderView(rx.State):
                     "observation": obs,
                     "total_order": o.total_order,
                     "total_paid": o.total_paid,
-                    "order_date": fecha_o,
                     "delivery_date": fecha_d,
+                    "pending": o.total_order - o.total_paid,
                 })
         self.total_items = len(resultados)
         self.offset = 0
         self.data = resultados[self.offset : self.offset + self.limit]
         self.set()
+
 
     @rx.event
     async def insert_order_controller(self, form_data: dict):
@@ -293,8 +304,6 @@ class OrderView(rx.State):
             pdf_bytes = f.read()
         yield rx.download(data=pdf_bytes, filename=f"factura_{order_id}.pdf")
         yield rx.toast("Factura generada con éxito")
-
-
 
     @rx.event
     async def update_order_controller(self, form_data: dict):
@@ -665,7 +674,7 @@ def get_table_header() -> rx.Component:
     return rx.table.row(
         rx.table.column_header_cell("ID"),
         rx.table.column_header_cell("Cliente"),
-        rx.table.column_header_cell("Total Pedido"),
+        rx.table.column_header_cell("¿Pagado Totalmente?"),
         rx.table.column_header_cell("Fecha de Entrega"),
         rx.table.column_header_cell("Acciones"),
         color="#3E2723",
@@ -677,40 +686,51 @@ def get_table_body(order: dict) -> rx.Component:
     return rx.table.row(
         rx.table.cell(rx.text(order["id"])),
         rx.table.cell(rx.text(order["customer_name"])),
-        rx.table.cell(rx.text(order["total_order"])),
+        rx.table.cell(
+            rx.cond(
+                order["total_paid"] == order["total_order"],
+                rx.text("PAGADO"),
+                rx.text("FALTA PAGO")
+            )
+        ),
         rx.table.cell(rx.text(order["delivery_date"])),
         rx.table.cell(
-            rx.button(
-                rx.icon("eye", size=22),
-                background_color="#3E2723",
-                size="2",
-                variant="solid",
-                on_click=lambda: OrderView.open_view_modal(order["id"]),
-            ),
-            rx.button(
-                rx.icon("square-pen", size=22),
-                background_color="#3E2723",
-                size="2",
-                variant="solid",
-                on_click=lambda: OrderView.edit_order(order["id"]),
-            ),
-            rx.cond(
-                OrderView.pdf_url != "",
-                rx.link(
-                    rx.icon("file-text", size=22),
-                    href=OrderView.pdf_url,
-                    target="_blank",
-                    on_click=lambda: OrderView.set_pdf_url(""),
-                    style={"marginLeft": "0.5em"},
-                ),
+            rx.hstack(
+                # Ver detalle
                 rx.button(
-                    rx.icon("file-text", size=22),
-                    on_click=lambda: OrderView.generate_invoice_pdf_event(order["id"]),
+                    rx.icon("eye", size=22),
                     background_color="#3E2723",
                     size="2",
                     variant="solid",
+                    on_click=lambda: OrderView.open_view_modal(order["id"]),
                 ),
-            ),
+                # Editar
+                rx.button(
+                    rx.icon("square-pen", size=22),
+                    background_color="#3E2723",
+                    size="2",
+                    variant="solid",
+                    on_click=lambda: OrderView.edit_order(order["id"]),
+                ),
+                # PDF
+                rx.cond(
+                    OrderView.pdf_url != "",
+                    rx.link(
+                        rx.icon("file-text", size=22),
+                        href=OrderView.pdf_url,
+                        target="_blank",
+                        on_click=lambda: OrderView.set_pdf_url(""),
+                    ),
+                    rx.button(
+                        rx.icon("file-text", size=22),
+                        on_click=lambda: OrderView.generate_invoice_pdf_event(order["id"]),
+                        background_color="#3E2723",
+                        size="2",
+                        variant="solid",
+                    ),
+                ),
+                spacing="2",  # <-- aquí el espacio entre botones
+            )
         ),
         color="#3E2723",
     )

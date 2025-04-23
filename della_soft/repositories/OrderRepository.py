@@ -3,7 +3,6 @@ from ..models.OrderModel import Order
 from .ConnectDB import connect
 from sqlmodel import Session, String, or_, select
 from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlalchemy.orm import joinedload
 
 
 async def select_all():
@@ -55,3 +54,15 @@ def update_order(order: Order):
         session.commit()
         session.refresh(merged)       # refrescamos la instancia que sí pertenece a la sesión
         return merged
+    
+def update_pay_amount(order: Order):
+    engine = connect()
+    with Session(engine) as session:
+        # Traemos la instancia gestionada
+        db_order = session.get(Order, order.id)
+        if not db_order:
+            raise ValueError(f"Pedido con id={order.id} no existe")
+        # Cambiamos solo el campo que nos interesa
+        db_order.total_paid = order.total_paid
+        session.commit()
+        return db_order
