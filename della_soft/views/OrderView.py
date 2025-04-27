@@ -444,7 +444,7 @@ def create_order_form() -> rx.Component:
                     color="white",
                 ),
                 rx.text("Total Pagado:"),
-                rx.input(name="total_paid", background_color="#5D4037", color="white"),
+                rx.input(name="total_paid", background_color="#5D4037", color="white", read_only=True,),
                 columns="1fr 2fr",
                 gap="3",
                 width="100%",
@@ -530,6 +530,7 @@ def edit_order_form() -> rx.Component:
                     default_value=OrderView.modal_total_paid_str,
                     background_color="#5D4037",
                     color="white",
+                    read_only=True,
                 ),
                 columns="1fr 2fr",
                 gap="3",
@@ -711,23 +712,6 @@ def get_table_body(order: dict) -> rx.Component:
                     size="2",
                     variant="solid",
                     on_click=lambda: OrderView.edit_order(order["id"]),
-                ),
-                # PDF
-                rx.cond(
-                    OrderView.pdf_url != "",
-                    rx.link(
-                        rx.icon("file-text", size=22),
-                        href=OrderView.pdf_url,
-                        target="_blank",
-                        on_click=lambda: OrderView.set_pdf_url(""),
-                    ),
-                    rx.button(
-                        rx.icon("file-text", size=22),
-                        on_click=lambda: OrderView.generate_invoice_pdf_event(order["id"]),
-                        background_color="#3E2723",
-                        size="2",
-                        variant="solid",
-                    ),
                 ),
                 spacing="2",  # <-- aquí el espacio entre botones
             )

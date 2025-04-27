@@ -25,3 +25,15 @@ def insert_pos(pos: POS):
     with Session(engine) as session:
         session.add(pos)
         session.commit()
+
+def update_pos(pos: POS):
+    engine = connect()
+    with Session(engine) as session:
+        query = select(POS).where(POS.id == pos.id)
+        c = session.exec(query).first()
+        if c:
+            c.initial_amount = pos.initial_amount
+            c.final_amount = pos.final_amount
+            c.pos_date = pos.pos_date
+            session.add(c)
+            session.commit()

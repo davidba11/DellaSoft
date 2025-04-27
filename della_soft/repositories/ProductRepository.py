@@ -29,7 +29,6 @@ async def get_product(value: str):
         return session.exec(query).all()
 
 def update_product(product: Product):
-    print(f'product {product}')
     engine = connect()
     with Session(engine) as session:
         query = select(Product).where(Product.id == product.id)

@@ -8,13 +8,69 @@ from ..services.SystemService import (
     get_sys_date_to_string_two,
     get_sys_date_three,
 )
-from ..services.POSService import POS_is_open, insert_pos_register
-from ..services.OrderService import select_all_order_service
+from ..services.POSService import POS_is_open, insert_pos_register, update_final_amount
+from ..services.OrderService import select_all_order_service, update_pay_amount_service
 from ..services.CustomerService import select_name_by_id
 from ..models.POSModel import POS
+from ..models.OrderModel import Order
 
 from .OrderView import OrderView, view_order_modal
 
+def render_row(item: dict) -> rx.Component:
+    order_id      = item["id"]
+    customer_name = item["customer_name"]
+    total_paid    = item["total_paid"]
+    pending       = item["pending"]
+    total_order   = item["total_order"]
+
+    return rx.table.row(
+        rx.table.cell(rx.text(order_id)),
+        rx.table.cell(rx.text(customer_name)),
+        rx.table.cell(
+            rx.cond(
+                total_paid == total_order,
+                rx.text("PAGADO"),
+                rx.text("FALTA PAGO"),
+            )
+        ),
+        rx.table.cell(rx.text(pending)),
+        rx.table.cell(
+            rx.hstack(
+                # Ver detalle
+                rx.button(
+                    rx.icon("eye", size=22),
+                    on_click=OrderView.open_view_modal(order_id),
+                    background_color="#3E2723",
+                    size="2",
+                    variant="solid",
+                ),
+                # PDF o Pago
+                rx.cond(
+                    total_paid == total_order,
+                    rx.cond(
+                        OrderView.pdf_url != "",
+                        rx.link(
+                            rx.icon("file-text", size=22),
+                            href=OrderView.pdf_url,
+                            target="_blank",
+                        ),
+                        rx.button(
+                            rx.icon("file-text", size=22),
+                            on_click=OrderView.generate_invoice_pdf_event(order_id),
+                            background_color="#3E2723",
+                            size="2",
+                            variant="solid",
+                        ),
+                    ),
+                    payment_dialog_component(
+                        order_id, total_paid, pending, total_order
+                    ),
+                ),
+                spacing="2",
+            )
+        ),
+        color="#3E2723",
+    )
 
 def get_table_header() -> rx.Component:
     return rx.table.row(
@@ -27,56 +83,8 @@ def get_table_header() -> rx.Component:
         background_color="#A67B5B",
     )
 
-
-def get_table_body_pos(order: dict) -> rx.Component:
-    return rx.table.row(
-        rx.table.cell(rx.text(order["id"])),
-        rx.table.cell(rx.text(order["customer_name"])),
-        rx.table.cell(
-            rx.cond(
-                order["total_paid"] == order["total_order"],
-                rx.text("PAGADO"),
-                rx.text("FALTA PAGO"),
-            )
-        ),
-        rx.table.cell(rx.text(order["pending"])),
-        rx.table.cell(
-            rx.hstack(
-                rx.button(
-                    rx.icon("eye", size=22),
-                    background_color="#3E2723",
-                    size="2",
-                    variant="solid",
-                    on_click=lambda: OrderView.open_view_modal(order["id"]),
-                ),
-                rx.cond(
-                    order["total_paid"] == order["total_order"],
-                    rx.cond(
-                        OrderView.pdf_url != "",
-                        rx.link(
-                            rx.icon("file-text", size=22),
-                            href=OrderView.pdf_url,
-                            target="_blank",
-                            on_click=lambda: OrderView.set_pdf_url(""),
-                        ),
-                        rx.button(
-                            rx.icon("file-text", size=22),
-                            on_click=lambda: OrderView.generate_invoice_pdf_event(order["id"]),
-                            background_color="#3E2723",
-                            size="2",
-                            variant="solid",
-                        ),
-                    ),
-                    payment_dialog_component(order),
-                ),
-                spacing="2",
-            )
-        ),
-        color="#3E2723",
-    )
-
-
 class POSView(rx.State):
+    show_paid: bool = False
     sys_date: str
     is_open: bool = False
     final_amount: float = 0.0
@@ -94,6 +102,38 @@ class POSView(rx.State):
     max_payment: int = 0
     is_payment_invalid: bool = False
     payment_error: str = ""
+
+    @rx.event
+    def toggle_show_paid(self, checked: bool):
+        """Se llama al cambiar el checkbox."""
+        self.show_paid = checked
+        self.apply_filters()
+
+    def apply_filters(self):
+        # 1) partimos de todos los datos
+        data = list(self.pos_data)
+        # 2) si no queremos ver pagados, filtramos solo pendientes
+        if not self.show_paid:
+            data = [o for o in data if o["pending"] > 0]
+        # 3) si hay texto de búsqueda, lo aplicamos sobre esa lista
+        q = (self.pos_search or "").strip().lower()
+        if q:
+            filtered = []
+            for o in data:
+                estado = "pagado" if o["total_paid"] == o["total_order"] else "falta pago"
+                if (
+                    q in str(o["id"]).lower()
+                    or q in o["customer_name"].lower()
+                    or q in estado
+                    or q in str(o["pending"])
+                ):
+                    filtered.append(o)
+            data = filtered
+        # 4) actualizamos el estado
+        self.filtered_pos_data = data
+        self.total_items_pos = len(data)
+        self.offset_pos = 0
+        self.set()
 
     @rx.event
     def set_payment_context(self, order_id: int, pending: int):
@@ -130,27 +170,8 @@ class POSView(rx.State):
 
     @rx.event
     def on_pos_search(self, value: str):
-        q = (value or "").strip().lower()
-        self.pos_search = q
-        # reset paginado al buscar
-        self.offset_pos = 0
-        if not q:
-            self.filtered_pos_data = self.pos_data
-        else:
-            resultados = []
-            for o in self.pos_data:
-                estado = "pagado" if o["total_paid"] == o["total_order"] else "falta pago"
-                pending = str(o["pending"])
-                if (
-                    q in str(o["id"]).lower()
-                    or q in o["customer_name"].lower()
-                    or q in estado
-                    or q in pending
-                ):
-                    resultados.append(o)
-            self.filtered_pos_data = resultados
-        self.total_items_pos = len(self.filtered_pos_data)
-        self.set()
+        self.pos_search = (value or "").strip().lower()
+        self.apply_filters()
 
     @rx.event
     def pos_prev_page(self):
@@ -178,38 +199,42 @@ class POSView(rx.State):
 
     @rx.event
     async def load_date(self):
+        # cargar fecha y estado de caja
         self.sys_date = get_sys_date_to_string_two()
         self.pos = POS_is_open(get_sys_date_two(self.sys_date))
         self.is_open = self.pos is not None
 
-        # cargar pedidos
+        # cargar todos los pedidos
         orders = await select_all_order_service()
-        data = []
-        for o in orders:
-            data.append({
+        self.pos_data = [
+            {
                 "id": o.id,
                 "customer_name": select_name_by_id(o.id_customer),
                 "total_order": o.total_order,
                 "total_paid": o.total_paid,
                 "pending": o.total_order - o.total_paid,
-            })
-        self.pos_data = data
-        self.filtered_pos_data = data
-        self.total_items_pos = len(data)
-        self.offset_pos = 0
-        self.set()
+            }
+            for o in orders
+        ]
+
+        # resetear filtros
+        self.pos_search = ""
+        self.show_paid = False
+
+        # aplicar filtros iniciales
+        self.apply_filters()
 
     @rx.var
     def get_initial_amount(self) -> int:
-        return self.pos.initial_amount
+        return self.pos.initial_amount if self.pos else 0
 
     @rx.var
     def get_final_amount(self) -> int:
-        return self.pos.final_amount
+        return self.pos.final_amount if self.pos else 0
 
     @rx.var
     def get_earnings(self) -> int:
-        return self.pos.final_amount - self.pos.initial_amount
+        return (self.pos.final_amount - self.pos.initial_amount) if self.pos else 0
 
     @rx.event
     def on_initial_amount_change(self, value: str):
@@ -237,6 +262,38 @@ class POSView(rx.State):
         except BaseException as e:
             print(e.args)
 
+    @rx.event
+    async def process_payment(self, form_data: dict):
+        # 1) Extraer el monto a pagar
+        order_id = int(form_data.get("order_id", 0))
+        amount   = int(form_data.get("pending",  0))
+
+        # 2) Buscar la orden en los datos actuales
+        order = next((o for o in self.pos_data if o["id"] == order_id), None)
+        if not order:
+            print(f"Pedido {order_id} no encontrado")
+            return
+
+        new_total_paid = order["total_paid"] + amount
+
+        # 3) Intentar actualizar primero el pedido
+        try:
+            # Construyes un objeto Order sólo con id y total_paid
+            update_pay_amount_service(Order(id=order_id, total_paid=new_total_paid))
+        except Exception as e:
+            print("Error al actualizar el pago del pedido:", e)
+            return  # ¡No seguimos con la caja si falló la orden!
+
+        # 4) Si la orden se actualizó, actualizamos el POS
+        update_final_amount(
+            self.pos.id,
+            self.pos.initial_amount,
+            self.pos.final_amount + amount,
+            self.pos.pos_date,
+        )
+
+        # 5) Finalmente recargamos la vista
+        yield POSView.load_date()
 
 def get_title() -> rx.Component:
     return rx.text(
@@ -385,7 +442,6 @@ def create_pos_form() -> rx.Component:
         align="center",
         justify="center",
         style={"width": "100%", "gap": "3", "padding": "3"},
-        debug=True,
     )
 
 
@@ -421,52 +477,61 @@ def open_pos_modal() -> rx.Component:
         style={"width": "320px"},
     )
 
-# 2) Función completa update_payment_form con el aviso junto al botón:
-
-def update_payment_form(order: dict) -> rx.Component:
+def update_payment_form(
+    order_id: int,
+    total_paid: int,
+    pending: int,
+    total_order: int,
+) -> rx.Component:
+    """
+    Formulario de pago: recibe sólo literales para no capturar 'order'.
+    """
     return rx.form(
         rx.vstack(
-            # --- Grid de campos de solo lectura + editable ---
+            # Campo oculto con el order_id (fuera del grid)
+            rx.input(name="order_id", type="hidden", default_value=order_id),
+
+            # --- Grid de pares Label / Input ---
             rx.grid(
-                rx.text("Monto Pagado:", color="white"),
+                rx.text("Pagado:", color="white"),
                 rx.input(
                     name="total_paid",
                     type="number",
-                    default_value=order["total_paid"],
+                    default_value=total_paid,
+                    read_only=True,
                     background_color="#5D4037",
                     placeholder_color="white",
                     color="white",
-                    read_only=True,
                 ),
-                rx.text("Monto Faltante:", color="white"),
+                rx.text("Faltante:", color="white"),
                 rx.input(
                     name="pending_amount",
                     type="number",
-                    default_value=order["pending"],
+                    default_value=pending,
+                    read_only=True,
                     background_color="#5D4037",
                     placeholder_color="white",
                     color="white",
-                    read_only=True,
                 ),
-                rx.text("Monto Total:", color="white"),
+                rx.text("Total:", color="white"),
                 rx.input(
                     name="total_order",
                     type="number",
-                    default_value=order["total_order"],
+                    default_value=total_order,
+                    read_only=True,
                     background_color="#5D4037",
                     placeholder_color="white",
                     color="white",
-                    read_only=True,
                 ),
                 rx.text("Monto a Pagar:", color="white"),
                 rx.input(
                     name="pending",
                     type="number",
-                    default_value=order["pending"],
+                    default_value=pending,
+                    on_change=POSView.validate_payment,
                     background_color="#5D4037",
                     placeholder_color="white",
                     color="white",
-                    on_change=POSView.validate_payment,
                 ),
                 columns="1fr 2fr",
                 gap="3",
@@ -475,51 +540,50 @@ def update_payment_form(order: dict) -> rx.Component:
 
             rx.divider(color="white"),
 
-            # --- Botón + mensaje de error al lado ---
+            # Botón Guardar + mensaje de error
             rx.hstack(
                 rx.dialog.close(
                     rx.cond(
                         POSView.is_payment_invalid,
-                        # botón deshabilitado
                         rx.button(
                             rx.icon("save", size=22),
                             type="submit",
-                            background_color="#3E2723",
-                            size="2",
-                            variant="solid",
                             disabled=True,
-                        ),
-                        # botón habilitado
-                        rx.button(
-                            rx.icon("save", size=22),
-                            type="submit",
                             background_color="#3E2723",
                             size="2",
                             variant="solid",
+                        ),
+                        rx.button(
+                            rx.icon("save", size=22),
+                            type="submit",
                             disabled=False,
+                            background_color="#3E2723",
+                            size="2",
+                            variant="solid",
                         ),
                     )
                 ),
-                # Texto de error con símbolo de alerta
                 rx.cond(
                     POSView.is_payment_invalid,
                     rx.text(f"⚠️ {POSView.payment_error}", color="white"),
-                    rx.text(""),  # nada si es válido
+                    rx.text(""),
                 ),
                 spacing="2",
             ),
-
-            spacing="3",
         ),
-        # on_submit=POSView.process_payment,  # reactívalo cuando implementes el handler
+        on_submit=POSView.process_payment,  # sin argumentos
         style={"width": "100%", "gap": "3", "padding": "3"},
         align="center",
         justify="center",
-        debug=True,
     )
 
-
-def payment_dialog_component(order: dict) -> rx.Component:
+def payment_dialog_component(
+    order_id: int,
+    total_paid: int,
+    pending: int,
+    total_order: int,
+) -> rx.Component:
+    # Desplegamos el botón que abre el dialog
     return rx.dialog.root(
         rx.dialog.trigger(
             rx.button(
@@ -527,13 +591,14 @@ def payment_dialog_component(order: dict) -> rx.Component:
                 background_color="#3E2723",
                 size="2",
                 variant="solid",
-                on_click=lambda: POSView.set_payment_context(order["id"], order["pending"]),
+                on_click=POSView.set_payment_context(order_id, pending),
             )
         ),
+        # Contenido del dialog
         rx.dialog.content(
             rx.flex(
                 rx.dialog.title("Realizar pago"),
-                update_payment_form(order),
+                update_payment_form(order_id, total_paid, pending, total_order),
                 direction="column",
                 align="center",
                 justify="center",
@@ -548,29 +613,63 @@ def payment_dialog_component(order: dict) -> rx.Component:
 def pos_page() -> rx.Component:
     return rx.box(
         rx.vstack(
+            # 1) Título
             get_title(),
-            open_pos_modal(),
+
+            # 2) Fila de controles: buscador | botón Ver/Abrir Caja | checkbox
+            rx.hstack(
+                rx.cond(
+                    POSView.is_open,
+                    rx.hstack(
+                        # Input de búsqueda
+                        rx.input(
+                            placeholder="Buscar Pedido",
+                            value=POSView.pos_search,
+                            on_change=POSView.on_pos_search,
+                            background_color="#3E2723",
+                            color="white",
+                            width="200px",
+                        ),
+                        # Botón Ver/Abrir Caja
+                        open_pos_modal(),
+                        # Checkbox “Ver Pagados”
+                        rx.hstack(
+                            rx.checkbox(
+                                checked=POSView.show_paid,
+                                on_change=POSView.toggle_show_paid,
+                            ),
+                            rx.text("Ver Pagados", color="#3E2723"),
+                            spacing="1",
+                            align="center",
+                        ),
+                        spacing="4",
+                        align="center",
+                    ),
+                    # Si no está abierta, solo el botón para abrirla
+                    open_pos_modal(),
+                ),
+                justify="center",
+                align="center",
+            ),
+
+            # 3) Separador
             rx.divider(color_scheme="brown"),
+
+            # 4) Modal de detalle de órdenes (una sola vez)
+            view_order_modal(),
+
+            # 5) Tabla + paginación (solo si la caja está abierta)
             rx.cond(
                 POSView.is_open,
                 rx.vstack(
-                    rx.hstack(
-                        rx.input(
-                            name="pos_search",
-                            value=POSView.pos_search,
-                            placeholder="Buscar Pedido",
-                            background_color="#3E2723",
-                            color="white",
-                            on_change=POSView.on_pos_search,
-                            width="80%",
-                        ),
-                        justify="center",
-                        gap="3",
-                    ),
-                    view_order_modal(),
                     rx.table.root(
                         rx.table.header(get_table_header()),
-                        rx.table.body(rx.foreach(POSView.pos_page_data, get_table_body_pos)),
+                        rx.table.body(
+                            rx.foreach(
+                                POSView.pos_page_data,
+                                lambda item, index: render_row(item),
+                            )
+                        ),
                         width="80vw",
                         background_color="#FFF8E1",
                         border_radius="20px",
@@ -584,11 +683,15 @@ def pos_page() -> rx.Component:
                             size="2",
                             variant="solid",
                         ),
-                        rx.text(POSView.current_page_pos, " de ", POSView.num_total_pages_pos),
+                        rx.text(
+                            POSView.current_page_pos,
+                            " de ",
+                            POSView.num_total_pages_pos,
+                        ),
                         rx.button(
                             rx.icon("arrow-right", size=22),
                             on_click=POSView.pos_next_page,
-                            is_disabled=(POSView.offset_pos + POSView.limit_pos >= POSView.total_items_pos),
+                            is_disabled=POSView.offset_pos + POSView.limit_pos >= POSView.total_items_pos,
                             background_color="#3E2723",
                             size="2",
                             variant="solid",
@@ -604,15 +707,13 @@ def pos_page() -> rx.Component:
                     size="7",
                     weight="bold",
                     color="#3E2723",
-                    high_contrast=True,
-                    fontFamily="DejaVu Sans Mono",
-                    width="80%",
                 ),
             ),
+
             spacing="5",
             align="center",
-            width="80vw",
         ),
+        # Estilos del contenedor principal
         display="flex",
         justify_content="center",
         align_items="flex-start",
