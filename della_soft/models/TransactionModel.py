@@ -4,10 +4,6 @@ import reflex as rx
 
 from sqlmodel import Field, Relationship
 
-#Para evitar importaciones circulares
-if TYPE_CHECKING:
-    from .InvoiceModel import Invoice
-
 if TYPE_CHECKING:
     from .POSModel import POS
 
@@ -24,15 +20,8 @@ class Transaction(rx.Model, table=True):
     amount: int = Field(nullable=False)
     transaction_date: datetime | None = Field(default=None, nullable=False)
     status: str = Field(nullable=False)
-    id_invoice: int = Field(foreign_key="invoice.id")
     id_POS: int = Field(foreign_key="pos.id")
     id_user: int = Field(foreign_key="customer.id")
-
-    #Se comenta que un customer puede tener 0 o 1 rol
-    invoice: "Invoice" = Relationship(
-        #Se declara como se llama la relación del otro lado (Debe ser igual a la otra clase)
-        back_populates="transactions"
-    )
 
     pos: "POS" = Relationship(
         #Se declara como se llama la relación del otro lado (Debe ser igual a la otra clase)

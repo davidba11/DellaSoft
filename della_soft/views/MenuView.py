@@ -42,7 +42,6 @@ class MenuView(rx.State):
         self.set()
 
     def display_screen_by_customer(self, screen: str, id: int):
-        print(screen)
         yield ProductView.load_products()
         self.screen = screen
 

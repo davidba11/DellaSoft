@@ -13,6 +13,9 @@ from ..services.OrderService import select_all_order_service, update_pay_amount_
 from ..services.CustomerService import select_name_by_id
 from ..models.POSModel import POS
 from ..models.OrderModel import Order
+from ..services.TransactionService import create_transaction
+from ..models.TransactionModel import Transaction
+from datetime import datetime
 
 from .OrderView import OrderView, view_order_modal
 
@@ -264,11 +267,8 @@ class POSView(rx.State):
 
     @rx.event
     async def process_payment(self, form_data: dict):
-        # 1) Extraer el monto a pagar
         order_id = int(form_data.get("order_id", 0))
-        amount   = int(form_data.get("pending",  0))
-
-        # 2) Buscar la orden en los datos actuales
+        amount   = int(form_data.get("pending", 0))
         order = next((o for o in self.pos_data if o["id"] == order_id), None)
         if not order:
             print(f"Pedido {order_id} no encontrado")
@@ -278,13 +278,24 @@ class POSView(rx.State):
 
         # 3) Intentar actualizar primero el pedido
         try:
-            # Construyes un objeto Order sólo con id y total_paid
+            # *** Antes de actualizar, insertamos la transacción ***
+            create_transaction(
+                Transaction(
+                    id=None,
+                    observation=f"Pago por {amount}",
+                    amount=amount,
+                    transaction_date=datetime.now(),
+                    status="PAGO",
+                    id_POS=self.pos.id,
+                    id_user=1221,
+                )
+            )
             update_pay_amount_service(Order(id=order_id, total_paid=new_total_paid))
         except Exception as e:
-            print("Error al actualizar el pago del pedido:", e)
-            return  # ¡No seguimos con la caja si falló la orden!
+            print("Error al procesar pago/registro de transacción:", e)
+            return
 
-        # 4) Si la orden se actualizó, actualizamos el POS
+        # 4) Actualizar el POS
         update_final_amount(
             self.pos.id,
             self.pos.initial_amount,
@@ -292,7 +303,7 @@ class POSView(rx.State):
             self.pos.pos_date,
         )
 
-        # 5) Finalmente recargamos la vista
+        # 5) Recargar la vista
         yield POSView.load_date()
 
 def get_title() -> rx.Component:

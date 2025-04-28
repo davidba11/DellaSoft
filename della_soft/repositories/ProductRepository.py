@@ -2,7 +2,6 @@ from ..models.ProductModel import Product
 from .ConnectDB import connect
 from sqlmodel import Session, or_, select
 
-
 def select_all():
     engine = connect()
     with Session(engine) as session:

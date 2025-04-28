@@ -26,8 +26,3 @@ class Invoice(rx.Model, table=True):
         #Se declara como se llama la relación del otro lado (Debe ser igual a la otra clase)
         back_populates="invoice"
     )
-
-    transactions: "Transaction" = Relationship(
-        #Se declara como se llama la relación del otro lado (Debe ser igual a la otra clase)
-        back_populates="invoice"
-    )
