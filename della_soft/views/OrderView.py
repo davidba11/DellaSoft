@@ -444,7 +444,7 @@ def create_order_form() -> rx.Component:
                     color="white",
                 ),
                 rx.text("Total Pagado:"),
-                rx.input(name="total_paid", background_color="#5D4037", color="white", read_only=True,),
+                rx.input(name="total_paid", background_color="#5D4037", color="white", read_only=True,default_value="0"),
                 columns="1fr 2fr",
                 gap="3",
                 width="100%",

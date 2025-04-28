@@ -488,10 +488,10 @@ def update_payment_form(
     """
     return rx.form(
         rx.vstack(
-            # Campo oculto con el order_id (fuera del grid)
+            # Campo oculto con el order_id
             rx.input(name="order_id", type="hidden", default_value=order_id),
 
-            # --- Grid de pares Label / Input ---
+            # Grid de pares Label / Input
             rx.grid(
                 rx.text("Pagado:", color="white"),
                 rx.input(
@@ -540,27 +540,16 @@ def update_payment_form(
 
             rx.divider(color="white"),
 
-            # Botón Guardar + mensaje de error
+            # Botón Guardar + mensaje de error, el botón dispara el submit
             rx.hstack(
                 rx.dialog.close(
-                    rx.cond(
-                        POSView.is_payment_invalid,
-                        rx.button(
-                            rx.icon("save", size=22),
-                            type="submit",
-                            disabled=True,
-                            background_color="#3E2723",
-                            size="2",
-                            variant="solid",
-                        ),
-                        rx.button(
-                            rx.icon("save", size=22),
-                            type="submit",
-                            disabled=False,
-                            background_color="#3E2723",
-                            size="2",
-                            variant="solid",
-                        ),
+                    rx.button(
+                        rx.icon("save", size=22),
+                        type="submit",
+                        disabled=POSView.is_payment_invalid,
+                        background_color="#3E2723",
+                        size="2",
+                        variant="solid",
                     )
                 ),
                 rx.cond(
@@ -571,7 +560,7 @@ def update_payment_form(
                 spacing="2",
             ),
         ),
-        on_submit=POSView.process_payment,  # sin argumentos
+        on_submit=POSView.process_payment,  # ahora el formulario envía form_data
         style={"width": "100%", "gap": "3", "padding": "3"},
         align="center",
         justify="center",
