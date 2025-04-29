@@ -11,14 +11,9 @@ from della_soft.views import Login
 from della_soft.views import RegisterView
 from della_soft.repositories.LoginRepository import AuthState
 
-#FrontEnd
-def index():
-    return rx.text("Login")
-
 #Publicación de páginas
 app = rx.App()
 app.add_page(MenuView.menu, route="/menu", on_load=AuthState.load_roles_once)
-app.add_page(index)
 app.add_page(CustomerView.customers, route="/customers", title='Clientes')  
 app.add_page(ProductView.products, route="/products", title='Productos')
 app.add_page(OrderView.orders, route="/orders")
