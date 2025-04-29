@@ -46,6 +46,7 @@ def render_row(item: dict) -> rx.Component:
                     background_color="#3E2723",
                     size="2",
                     variant="solid",
+                    title="Ver Pedido",
                 ),
                 # PDF o Pago
                 rx.cond(
@@ -56,6 +57,7 @@ def render_row(item: dict) -> rx.Component:
                             rx.icon("file-text", size=22),
                             href=OrderView.pdf_url,
                             target="_blank",
+                            title="Ver Factura",
                         ),
                         rx.button(
                             rx.icon("file-text", size=22),
@@ -63,9 +65,17 @@ def render_row(item: dict) -> rx.Component:
                             background_color="#3E2723",
                             size="2",
                             variant="solid",
+                            title="Ver Factura",
                         ),
                     ),
                     payment_dialog_component(
+                        order_id, total_paid, pending, total_order
+                    ),
+                ),
+                # Reversar pago (undo) solo si total_paid > 0
+                rx.cond(
+                    total_paid != 0,
+                    reverse_dialog_component(
                         order_id, total_paid, pending, total_order
                     ),
                 ),
@@ -139,10 +149,21 @@ class POSView(rx.State):
         self.set()
 
     @rx.event
-    def set_payment_context(self, order_id: int, pending: int):
+    def set_payment_context(self, pending: int):
         """Se llama al abrir el modal para fijar el límite de pago."""
         self.payment_amount = pending
         self.max_payment = pending
+        self.is_payment_invalid = False
+        self.payment_error = ""
+        self.set()
+
+    @rx.event
+    def set_reverse_context(self, order_id: int, total_paid: int):
+        """Prepara el modal de reverso."""
+        # Guardamos el total pagado como máximo (positivo),
+        # y el payment_amount inicial como su negativo:
+        self.max_payment = total_paid
+        self.payment_amount = -total_paid
         self.is_payment_invalid = False
         self.payment_error = ""
         self.set()
@@ -169,6 +190,40 @@ class POSView(rx.State):
             else:
                 self.is_payment_invalid = False
                 self.payment_error = ""
+        self.set()
+
+    @rx.event
+    def validate_reverse(self, value: str):
+        """
+        Valida el monto a reversar:
+        - No puede estar vacío.
+        - Debe ser negativo.
+        - Su valor absoluto no puede superar el pagado (self.max_payment).
+        """
+        text = (value or "").strip()
+        if text == "":
+            self.payment_amount = 0
+            self.is_payment_invalid = True
+            self.payment_error = "Monto a reversar no puede ser vacío"
+        else:
+            try:
+                amt = int(text)
+            except ValueError:
+                amt = 0
+            # 1) Chequeo de signo
+            if amt >= 0:
+                self.is_payment_invalid = True
+                self.payment_error = "El monto a reversar debe ser negativo"
+                self.payment_amount = 0
+            else:
+                # 2) Guardamos como negativo y validamos límite
+                self.payment_amount = amt
+                if abs(amt) > self.max_payment:
+                    self.is_payment_invalid = True
+                    self.payment_error = "Monto a reversar no puede superar el monto pagado"
+                else:
+                    self.is_payment_invalid = False
+                    self.payment_error = ""
         self.set()
 
     @rx.event
@@ -288,6 +343,7 @@ class POSView(rx.State):
                     status="PAGO",
                     id_POS=self.pos.id,
                     id_user=1221,
+                    id_order=order_id,
                 )
             )
             update_pay_amount_service(Order(id=order_id, total_paid=new_total_paid))
@@ -304,6 +360,48 @@ class POSView(rx.State):
         )
 
         # 5) Recargar la vista
+        yield POSView.load_date()
+
+    @rx.event
+    async def process_reverse(self, form_data: dict):
+        order_id = int(form_data.get("order_id", 0))
+        amount   = int(form_data.get("reverse_amount", 0))
+        order = next((o for o in self.pos_data if o["id"] == order_id), None)
+        if not order:
+            print(f"Pedido {order_id} no encontrado")
+            return
+
+        new_total_paid = order["total_paid"] + amount  # Como amount es negativo. En este caso se suma
+
+        try:
+            # Inserta transacción de reverso
+            create_transaction(
+                Transaction(
+                    id=None,
+                    observation=f"Reverso de {amount}",
+                    amount=-amount,
+                    transaction_date=datetime.now(),
+                    status="REVERSO",
+                    id_POS=self.pos.id,
+                    id_user=1221,
+                    id_order=order_id,
+                )
+            )
+            # Actualiza el pedido con el nuevo total_paid
+            update_pay_amount_service(Order(id=order_id, total_paid=new_total_paid))
+        except Exception as e:
+            print("Error al procesar reverso:", e)
+            return
+
+        # Ajusta la caja
+        update_final_amount(
+            self.pos.id,
+            self.pos.initial_amount,
+            self.pos.final_amount - amount,
+            self.pos.pos_date,
+        )
+
+        # Recarga
         yield POSView.load_date()
 
 def get_title() -> rx.Component:
@@ -577,6 +675,90 @@ def update_payment_form(
         justify="center",
     )
 
+def update_reverse_form(
+    order_id: int,
+    total_paid: int,
+    pending: int,
+    total_order: int,
+) -> rx.Component:
+    return rx.form(
+        rx.vstack(
+            # Campo oculto con el order_id
+            rx.input(name="order_id", type="hidden", default_value=order_id),
+            # Grid de pares Label / Input
+            rx.grid(
+                rx.text("Pagado:", color="white"),
+                rx.input(
+                    name="total_paid",
+                    type="number",
+                    default_value=total_paid,
+                    read_only=True,
+                    background_color="#5D4037",
+                    placeholder_color="white",
+                    color="white",
+                ),
+                rx.text("Faltante:", color="white"),
+                rx.input(
+                    name="pending_amount",
+                    type="number",
+                    default_value=pending,
+                    read_only=True,
+                    background_color="#5D4037",
+                    placeholder_color="white",
+                    color="white",
+                ),
+                rx.text("Total:", color="white"),
+                rx.input(
+                    name="total_order",
+                    type="number",
+                    default_value=total_order,
+                    read_only=True,
+                    background_color="#5D4037",
+                    placeholder_color="white",
+                    color="white",
+                ),
+                rx.text("Monto a Reversar:", color="white"),
+                rx.input(
+                    name="reverse_amount",
+                    type="number",
+                    # Usamos `value` atado al state para precargar -total_paid
+                    value=POSView.payment_amount,
+                    on_change=POSView.validate_reverse,
+                    background_color="#5D4037",
+                    placeholder_color="white",
+                    color="white",
+                ),
+                columns="1fr 2fr",
+                gap="3",
+                width="100%",
+            ),
+            rx.divider(color="white"),
+            # Botón Guardar (reverso) + mensaje de error
+            rx.hstack(
+                rx.dialog.close(
+                    rx.button(
+                        rx.icon("save", size=22),
+                        type="submit",
+                        disabled=POSView.is_payment_invalid,
+                        background_color="#3E2723",
+                        size="2",
+                        variant="solid",
+                    )
+                ),
+                rx.cond(
+                    POSView.is_payment_invalid,
+                    rx.text(f"⚠️ {POSView.payment_error}", color="white"),
+                    rx.text(""),
+                ),
+                spacing="2",
+            ),
+        ),
+        on_submit=POSView.process_reverse,
+        style={"width": "100%", "gap": "3", "padding": "3"},
+        align="center",
+        justify="center",
+    )
+
 def payment_dialog_component(
     order_id: int,
     total_paid: int,
@@ -591,7 +773,8 @@ def payment_dialog_component(
                 background_color="#3E2723",
                 size="2",
                 variant="solid",
-                on_click=POSView.set_payment_context(order_id, pending),
+                title="Realizar Pago",
+                on_click=POSView.set_payment_context(pending),
             )
         ),
         # Contenido del dialog
@@ -599,6 +782,37 @@ def payment_dialog_component(
             rx.flex(
                 rx.dialog.title("Realizar pago"),
                 update_payment_form(order_id, total_paid, pending, total_order),
+                direction="column",
+                align="center",
+                justify="center",
+                gap="3",
+            ),
+            background_color="#A67B5B",
+        ),
+        style={"width": "300px"},
+    )
+
+def reverse_dialog_component(
+    order_id: int,
+    total_paid: int,
+    pending: int,
+    total_order: int,
+) -> rx.Component:
+    return rx.dialog.root(
+        rx.dialog.trigger(
+            rx.button(
+                rx.icon("undo", size=22),
+                background_color="#3E2723",
+                size="2",
+                variant="solid",
+                title="Reversar pago",
+                on_click=POSView.set_reverse_context(order_id, total_paid),
+            )
+        ),
+        rx.dialog.content(
+            rx.flex(
+                rx.dialog.title("Reversar pago"),
+                update_reverse_form(order_id, total_paid, pending, total_order),
                 direction="column",
                 align="center",
                 justify="center",

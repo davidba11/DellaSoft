@@ -15,6 +15,9 @@ if TYPE_CHECKING:
 if TYPE_CHECKING:
     from .InvoiceModel import Invoice
 
+if TYPE_CHECKING:
+    from .TransactionModel import Transaction
+
 class Order(rx.Model, table=True):
 
     #Como la clase no se llama igual al archivo que la contiene, se agrega __tablename__
@@ -39,6 +42,11 @@ class Order(rx.Model, table=True):
     )
 
     invoice: "Invoice" = Relationship(
+        #Se declara como se llama la relación del otro lado (Debe ser igual a la otra clase)
+        back_populates="order"
+    )
+
+    transactions: Optional[List["Transaction"]] = Relationship(
         #Se declara como se llama la relación del otro lado (Debe ser igual a la otra clase)
         back_populates="order"
     )

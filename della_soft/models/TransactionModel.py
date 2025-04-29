@@ -10,6 +10,9 @@ if TYPE_CHECKING:
 if TYPE_CHECKING:
     from .CustomerModel import Customer
 
+if TYPE_CHECKING:
+    from .OrderModel import Order
+
 class Transaction(rx.Model, table=True):
 
     #Como la clase no se llama igual al archivo que la contiene, se agrega __tablename__
@@ -22,6 +25,7 @@ class Transaction(rx.Model, table=True):
     status: str = Field(nullable=False)
     id_POS: int = Field(foreign_key="pos.id")
     id_user: int = Field(foreign_key="customer.id")
+    id_order: int = Field(foreign_key="order.id", nullable=True)
 
     pos: "POS" = Relationship(
         #Se declara como se llama la relación del otro lado (Debe ser igual a la otra clase)
@@ -29,6 +33,11 @@ class Transaction(rx.Model, table=True):
     )
 
     customer: "Customer" = Relationship(
+        #Se declara como se llama la relación del otro lado (Debe ser igual a la otra clase)
+        back_populates="transactions"
+    )
+
+    order: Optional["Order"] = Relationship(
         #Se declara como se llama la relación del otro lado (Debe ser igual a la otra clase)
         back_populates="transactions"
     )
