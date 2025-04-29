@@ -3,3 +3,6 @@ from .CustomerModel import Customer
 from .ProductModel import Product
 from .ProductOrderModel import ProductOrder
 from .OrderModel import Order
+from .POSModel import POS
+from .TransactionModel import Transaction
+from .InvoiceModel import Invoice

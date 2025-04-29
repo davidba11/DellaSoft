@@ -77,6 +77,26 @@ def update_customer(customer: Customer):
             query = select(Customer)
             return session.exec(query).all()
 
+def update_user(customer: Customer):
+    print(f'customer {customer}')
+    engine = connect()
+    with Session(engine) as session:
+        query = select(Customer).where(Customer.id == customer.id)
+        c = session.exec(query).first()
+        if c:
+            c.first_name = customer.first_name
+            c.last_name = customer.last_name
+            c.contact = customer.contact 
+            c.username = customer.username
+            c.password = customer.password
+            c.id_rol = customer.id_rol
+            c.ci = customer.ci
+            session.add(c)
+            session.commit()
+            query = select(Customer)
+            print(f'response {query}')
+            return session.exec(query).all()
+
 def create_user(customer: Customer):
     engine = connect()
     with Session(engine) as session:

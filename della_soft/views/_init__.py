@@ -5,3 +5,4 @@ from .OrderDetailView import  OrderDetailView
 from .MenuView import  MenuView
 from .RegisterView import register_page
 from .Login import  login_page
+from .POSView import  POSView

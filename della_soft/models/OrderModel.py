@@ -12,6 +12,12 @@ if TYPE_CHECKING:
 if TYPE_CHECKING:
     from .CustomerModel import Customer
 
+if TYPE_CHECKING:
+    from .InvoiceModel import Invoice
+
+if TYPE_CHECKING:
+    from .TransactionModel import Transaction
+
 class Order(rx.Model, table=True):
 
     #Como la clase no se llama igual al archivo que la contiene, se agrega __tablename__
@@ -25,7 +31,6 @@ class Order(rx.Model, table=True):
     delivery_date: datetime | None = Field(default=None, nullable=True)
     id_customer: int = Field(foreign_key="customer.id") #Se declara FK de customer
 
-    #Se comenta que un customer puede tener 0 o 1 rol
     order_detail: List["ProductOrder"] = Relationship(
         #Se declara como se llama la relación del otro lado (Debe ser igual a la otra clase)
         back_populates="order"
@@ -34,4 +39,14 @@ class Order(rx.Model, table=True):
     customer: "Customer" = Relationship(
         #Se declara como se llama la relación del otro lado (Debe ser igual a la otra clase)
         back_populates="orders"
+    )
+
+    invoice: "Invoice" = Relationship(
+        #Se declara como se llama la relación del otro lado (Debe ser igual a la otra clase)
+        back_populates="order"
+    )
+
+    transactions: Optional[List["Transaction"]] = Relationship(
+        #Se declara como se llama la relación del otro lado (Debe ser igual a la otra clase)
+        back_populates="order"
     )

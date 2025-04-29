@@ -121,12 +121,6 @@ class CustomerView(rx.State):
             print(e)
             self.error_message = f"Error al actualizar: {e}"
 
-
-    
-
-
-
-
 def get_title():
     return rx.text(
         "Clientes",
@@ -179,7 +173,7 @@ def get_table_header():
         rx.table.column_header_cell('Apellido'),	
         rx.table.column_header_cell('Contacto'),	
         rx.table.column_header_cell('Div'),
-        rx.table.column_header_cell('Accion'), 
+        rx.table.column_header_cell('Acciones'), 
         color="#3E2723",
         background_color="#A67B5B",
     )
@@ -216,102 +210,162 @@ def search_customer_component () ->rx.Component:
 def create_customer_form() -> rx.Component:
     return rx.form(
         rx.vstack(
-            rx.input(placeholder='Cedula', name='ci', background_color="#3E2723",  placeholder_color="white", color="white"),
-            rx.input(placeholder='Nombre', name='first_name', background_color="#3E2723",  placeholder_color="white", color="white"),
-            rx.input(placeholder='Apellido', name='last_name', background_color="#3E2723",  placeholder_color="white", color="white"),
-            rx.input(placeholder='Contacto', name='contact', background_color="#3E2723",  placeholder_color="white", color="white"),
-            rx.input(placeholder='Div', name='div', background_color="#3E2723",  placeholder_color="white", color="white"),
-            rx.dialog.close(rx.button('Guardar', background_color="#3E2723", type='submit')),
-            rx.text(CustomerView.error_message),
-            align='center',
-            justify='center', 
-            spacing="2",
-            
-    ),
-    align='center',
-    justify='center',
-    #direction='column',
-    border_radius="20px",
-    padding="20px",
-    on_submit=CustomerView.create_customer,
-     
+            rx.grid(
+                rx.text("Cédula:", color="white"),
+                rx.input(
+                    placeholder="Cédula",
+                    name="ci",
+                    background_color="#5D4037",
+                    placeholder_color="white",
+                    color="white",
+                ),
+                rx.text("Nombre:", color="white"),
+                rx.input(
+                    placeholder="Nombre",
+                    name="first_name",
+                    background_color="#5D4037",
+                    placeholder_color="white",
+                    color="white",
+                ),
+                rx.text("Apellido:", color="white"),
+                rx.input(
+                    placeholder="Apellido",
+                    name="last_name",
+                    background_color="#5D4037",
+                    placeholder_color="white",
+                    color="white",
+                ),
+                rx.text("Contacto:", color="white"),
+                rx.input(
+                    placeholder="Contacto",
+                    name="contact",
+                    background_color="#5D4037",
+                    placeholder_color="white",
+                    color="white",
+                ),
+                rx.text("Div:", color="white"),
+                rx.input(
+                    placeholder="Div",
+                    name="div",
+                    background_color="#5D4037",
+                    placeholder_color="white",
+                    color="white",
+                ),
+                columns="1fr 2fr",
+                gap="3",
+                width="100%",
+            ),
+            rx.divider(color="white"),
+            # Botón de guardar
+            rx.dialog.close(
+                rx.button(
+                    rx.icon("save", size=22),
+                    type="submit",
+                    background_color="#3E2723",
+                    size="2",
+                    variant="solid",
+                )
+            ),
+            spacing="3",
+        ),
+        on_submit=CustomerView.create_customer,
+        style={"width": "100%", "gap": "3", "padding": "3"},
+        debug=True,
+        align="center",
+        justify="center",
     )
 
 def update_customer_form() -> rx.Component:
     return rx.form(
         rx.vstack(
+            # Campo oculto para el ID
             rx.input(
-                name='id', 
-                type="hidden", 
+                name="id",
+                type="hidden",
                 value=CustomerView.id,
-                on_change = lambda value: CustomerView.set_id(value)
+                on_change=lambda value: CustomerView.set_id(value),
             ),
-            rx.input(
-                placeholder='Cédula',
-                name='ci',
-                # is_disabled=True,
-                value=CustomerView.ci,
-                on_change = CustomerView.set_ci,
-                background_color="#3E2723",
-                placeholder_color="white",
-                color="white"
+            # Grid con labels e inputs
+            rx.grid(
+                rx.text("Cédula:", color="white"),
+                rx.input(
+                    placeholder="Cédula",
+                    name="ci",
+                    value=CustomerView.ci,
+                    on_change=CustomerView.set_ci,
+                    background_color="#5D4037",
+                    placeholder_color="white",
+                    color="white",
+                ),
+                rx.text("Nombre:", color="white"),
+                rx.input(
+                    placeholder="Nombre",
+                    name="first_name",
+                    value=CustomerView.first_name,
+                    on_change=CustomerView.set_first_name,
+                    background_color="#5D4037",
+                    placeholder_color="white",
+                    color="white",
+                ),
+                rx.text("Apellido:", color="white"),
+                rx.input(
+                    placeholder="Apellido",
+                    name="last_name",
+                    value=CustomerView.last_name,
+                    on_change=CustomerView.set_last_name,
+                    background_color="#5D4037",
+                    placeholder_color="white",
+                    color="white",
+                ),
+                rx.text("Contacto:", color="white"),
+                rx.input(
+                    placeholder="Contacto",
+                    name="contact",
+                    value=CustomerView.contact,
+                    on_change=CustomerView.set_contact,
+                    background_color="#5D4037",
+                    placeholder_color="white",
+                    color="white",
+                ),
+                rx.text("Div:", color="white"),
+                rx.input(
+                    placeholder="Div",
+                    name="div",
+                    value=CustomerView.div,
+                    on_change=lambda value: CustomerView.set_div(value),
+                    background_color="#5D4037",
+                    placeholder_color="white",
+                    color="white",
+                ),
+                columns="1fr 2fr",
+                gap="3",
+                width="100%",
             ),
-            rx.input(
-                placeholder='Nombre',
-                name='first_name',
-                value=CustomerView.first_name,
-                on_change=CustomerView.set_first_name,
-                background_color="#3E2723",
-                placeholder_color="white",
-                color="white"
-            ),
-            rx.input(
-                placeholder='Apellido',
-                name='last_name',
-                value=CustomerView.last_name,
-                on_change=CustomerView.set_last_name,
-                background_color="#3E2723",
-                placeholder_color="white",
-                color="white"
-            ),
-            rx.input(
-                placeholder='Contacto',
-                name='contact',
-                value=CustomerView.contact,
-                on_change=CustomerView.set_contact,
-                background_color="#3E2723",
-                placeholder_color="white",
-                color="white"
-            ),
-            rx.input(
-                placeholder='Div',
-                name='div',
-                value=CustomerView.div,
-                on_change=lambda value: CustomerView.set_div(value),
-                background_color="#3E2723",
-                placeholder_color="white",
-                color="white"
-            ),
+            rx.divider(color="white"),
+            # Mensaje de error, si hubiera
+            rx.text(CustomerView.error_message, color="white"),
+            # Botón de guardar
             rx.dialog.close(
-                rx.button('Actualizar', background_color="#3E2723", type='submit')
+                rx.button(
+                    rx.icon("save", size=22),
+                    type="submit",
+                    background_color="#3E2723",
+                    size="2",
+                    variant="solid",
+                )
             ),
-            rx.text(CustomerView.error_message),
-            align='center',
-            justify='center',
-            spacing="2"
+            spacing="3",
         ),
-        align='center',
-        justify='center',
-        border_radius="20px",
-        padding="20px",
-        on_submit=CustomerView.update_customer
+        on_submit=CustomerView.update_customer,
+        style={"width": "100%", "gap": "3", "padding": "3"},
+        align="center",
+        justify="center",
+        debug=True,
     )
-
 
 def create_customer_dialog_component() -> rx.Component:
     return rx.dialog.root(
         rx.dialog.trigger(rx.button(rx.icon("plus", size=22),
-                rx.text("Crear", size="3"),
                 background_color="#3E2723",
                 size="2",
                 variant="solid",)),
@@ -322,13 +376,9 @@ def create_customer_dialog_component() -> rx.Component:
                 justify='center',
                 align='center',
                 direction='column',
-                weight="bold",
-                color="#3E2723"
+                weight="bold"
             ),
             rx.flex(
-                rx.dialog.close(
-                    rx.button('Cancelar', color_scheme='gray', variant='soft')
-                ),
                 spacing="3",
                 margin_top="16px",
                 justify="end",
@@ -341,8 +391,7 @@ def create_customer_dialog_component() -> rx.Component:
 
 def update_customer_dialog_component(customer) -> rx.Component:
     return rx.dialog.root(
-        rx.dialog.trigger(rx.button(rx.icon("plus", size=22),
-                rx.text("Crear", size="3"),
+        rx.dialog.trigger(rx.button(rx.icon("square-pen", size=22),
                 background_color="#3E2723",
                 size="2",
                 variant="solid",
@@ -355,16 +404,7 @@ def update_customer_dialog_component(customer) -> rx.Component:
                 justify='center',
                 align='center',
                 direction='column',
-                weight="bold",
-                color="#3E2723"
-            ),
-            rx.flex(
-                rx.dialog.close(
-                    rx.button('Cancelar', color_scheme='gray', variant='soft')
-                ),
-                spacing="3",
-                margin_top="16px",
-                justify="end",
+                weight="bold"
             ),
             background_color="#A67B5B",
         ),
