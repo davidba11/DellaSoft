@@ -6,3 +6,6 @@ from .OrderModel import Order
 from .POSModel import POS
 from .TransactionModel import Transaction
 from .InvoiceModel import Invoice
+from .StockModel import Stock
+from .IngredientModel import Ingredient
+from .MeasureModel import Measure

@@ -18,6 +18,7 @@ class Product(rx.Model, table=True):
     description: str = Field(nullable=False)
     product_type: str = Field(default=None, nullable=False)
     price: int = Field (default=0, nullable=False)
+    id_stock: int = Field(foreign_key="stock.id", nullable=False) #Se declara FK de stock
 
     product_detail: List["ProductOrder"] = Relationship(
         #Se declara como se llama la relación del otro lado (Debe ser igual a la otra clase)
