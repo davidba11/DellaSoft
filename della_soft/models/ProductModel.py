@@ -7,6 +7,7 @@ from sqlmodel import Field, Relationship
 if TYPE_CHECKING:
     from .ProductOrderModel import ProductOrder
     from .CustomerModel import Customer
+    from .StockModel import Stock
 
 class Product(rx.Model, table=True):
 
@@ -21,4 +22,9 @@ class Product(rx.Model, table=True):
     product_detail: List["ProductOrder"] = Relationship(
         #Se declara como se llama la relación del otro lado (Debe ser igual a la otra clase)
         back_populates="product"
+    )
+
+    stock: Optional["Stock"] = Relationship(
+        #Se declara como se llama la relación del otro lado (Debe ser igual a la otra clase)
+        back_populates="products"
     )
