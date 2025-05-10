@@ -16,7 +16,6 @@ class Ingredient(rx.Model, table=True):
 
     id: int = Field(default=None, primary_key=True, nullable=False) #Se declara como PK
     name: str = Field(nullable=False)
-    id_stock: int = Field(foreign_key="stock.id", nullable=False)
     id_medida: int = Field(foreign_key="measure.id", nullable=False)
 
     measurement: "Measure" = Relationship(
@@ -24,7 +23,7 @@ class Ingredient(rx.Model, table=True):
         back_populates="ingredients"
     )
 
-    stock: "Stock" = Relationship(
+    stock: Optional ["Stock"] = Relationship(
         #Se declara como se llama la relación del otro lado (Debe ser igual a la otra clase)
-        back_populates="ingredients"
+        back_populates="ingredient"
     )

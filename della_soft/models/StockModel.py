@@ -13,8 +13,9 @@ class Stock (rx.Model, table=True):
     id: int = Field(default=None, primary_key=True)
     cant: int = Field(nullable=False)
     cant_min: int = Field(nullable=False)
+    id_ingredient: int = Field(foreign_key="ingredient.id", nullable=False)
 
-    ingredients: Optional [List["Ingredient"]] = Relationship(
+    ingredient: "Ingredient" = Relationship(
         back_populates="stock"
     )
 

@@ -9,6 +9,9 @@ from .CustomerView import CustomerView, customers
 from .UserView import UserView, users
 from .Login import login_page
 from .POSView import POSView, pos_page
+from .IngredientView import IngredientView, ingredients
+from .RecipeView import RecipeView, recipes
+from .StockView import StockView, stock
 
 from typing import TYPE_CHECKING
 
@@ -36,6 +39,14 @@ class MenuView(rx.State):
             yield ProductView.load_products()
         if screen == "pos_view":
             yield POSView.load_date()
+        if screen == "ingredients_view":
+            yield IngredientView.load_ingredients()
+        if screen == "recipes_view":
+            #yield RecipeView.load_recipes()
+            pass
+        if screen == "stock_view":
+            #yield StockView.load_stock()
+            pass
         if screen == "logout":
             yield AuthState.logout()
         self.screen = screen
@@ -62,24 +73,40 @@ def get_title():
         z_index="10"
     )
 
+def menu_icon(icon_name: str, label: str, on_click=None) -> rx.Component:
+    return rx.tooltip(
+        rx.icon(
+            icon_name,
+            color="#3E2723",
+            size=40,
+            on_click=on_click,
+        ),
+        content=label,      # <-- texto que se ve al hacer hover
+        side="right",       # top | bottom | left | right
+        side_offset=8,      # separación opcional respecto al icono
+    )
+
 def get_menu():
     return rx.vstack(
         rx.spacer(),
         rx.cond(
             AuthState.is_logged_in,
             rx.vstack(
-                rx.icon("notebook-pen", color="#3E2723", size=40, on_click=lambda: MenuView.display_screen("orders_view")),
-                rx.icon("user", color="#3E2723", size=40, on_click=lambda: MenuView.display_screen("customers_view")),
-                rx.icon("cake", color="#3E2723", size=40, on_click=lambda: MenuView.display_screen("products_view")),
-                rx.icon("circle-dollar-sign", color="#3E2723", size=40, on_click=lambda: MenuView.display_screen("pos_view")),
-                rx.icon("settings", color="#3E2723", size=40, on_click=lambda: MenuView.display_screen("users_view")),
+                menu_icon("notebook-pen", "Pedidos", on_click=lambda: MenuView.display_screen("orders_view")),
+                menu_icon("user", "Clientes", on_click=lambda: MenuView.display_screen("customers_view")),
+                menu_icon("cake", "Productos", on_click=lambda: MenuView.display_screen("products_view")),
+                menu_icon("circle-dollar-sign", "Caja", on_click=lambda: MenuView.display_screen("pos_view")),
+                menu_icon("cherry", "Ingredientes", on_click=lambda: MenuView.display_screen("ingredients_view")),
+                menu_icon("book-open-text", "Recetas", on_click=lambda: MenuView.display_screen("recipes_view")),
+                menu_icon("list-checks", "Stock", on_click=lambda: MenuView.display_screen("stock_view")),
+                menu_icon("settings", "Usuarios", on_click=lambda: MenuView.display_screen("users_view")),
             ),
-            rx.icon("log-in", color="#3E2723", size=40, on_click=lambda: MenuView.display_screen("login"))
+            menu_icon("log-in", "Ingresar", on_click=lambda: MenuView.display_screen("login")),
         ),
         rx.spacer(),
         rx.cond(
             AuthState.is_logged_in,
-            rx.icon("log-out", color="#3E2723", size=40, on_click=lambda:[ MenuView.display_screen("login"), AuthState.logout()])
+            menu_icon("log-out", "Salir", on_click=lambda: [MenuView.display_screen("login"), AuthState.logout()]),
         ),
         height="100vh",
         align="center",
@@ -111,10 +138,22 @@ def menu() -> rx.Component:
                                         rx.cond(
                                             MenuView.screen == "pos_view",
                                             pos_page(),
-                                            orders()
+                                            rx.cond(
+                                                MenuView.screen == "ingredients_view",
+                                                ingredients(),
+                                                rx.cond(
+                                                    MenuView.screen == "recipes_view",
+                                                    recipes(),
+                                                    rx.cond(
+                                                        MenuView.screen == "stock_view",
+                                                        stock(),
+                                                        orders()
+                                                    ),
+                                                ),
+                                            ),
                                         ),
-                                    )
-                                )
+                                    ),
+                                ),
                             ),
                             width="100%",
                             height="calc(100vh - 5em)",

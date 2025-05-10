@@ -28,8 +28,6 @@ class ProductView(rx.State):
     price: int = 0
     error_message: str = ""
 
-
-
     @rx.event
     def change_value(self, value: str):
         self.value = value
@@ -58,9 +56,6 @@ class ProductView(rx.State):
 
     @rx.var
     def current_page(self) -> int:
-        return (self.offset // self.limit) + 1
-    
-    def page_number(self) -> int:
         return (self.offset // self.limit) + 1
 
     @rx.event

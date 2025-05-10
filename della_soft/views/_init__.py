@@ -6,3 +6,6 @@ from .MenuView import  MenuView
 from .RegisterView import register_page
 from .Login import  login_page
 from .POSView import  POSView
+from .IngredientView import  IngredientView
+from .RecipeView import  RecipeView
+from .StockView import  StockView
