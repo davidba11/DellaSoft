@@ -6,3 +6,4 @@ __pycache__/
 .states
 public/facturas
 alembic/versions
+.venv
