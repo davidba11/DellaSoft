@@ -1,29 +1,23 @@
-
-from typing import Optional, TYPE_CHECKING, List
 import reflex as rx
-
 from sqlmodel import Field, Relationship
-
+from typing import List, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .StockModel import Stock
     from .MeasureModel import Measure
+    from .IngredientStockModel import IngredientStock
 
 
 class Ingredient(rx.Model, table=True):
-
     __tablename__ = "ingredient"
 
-    id: int = Field(default=None, primary_key=True, nullable=False) #Se declara como PK
-    name: str = Field(nullable=False)
-    id_medida: int = Field(foreign_key="measure.id", nullable=False)
+    id: int = Field(primary_key=True, default=None)
+    name: str = Field(nullable=False, unique=True)
+    measure_id: int = Field(foreign_key="measure.id", nullable=False)
 
-    measurement: "Measure" = Relationship(
-        #Se declara como se llama la relación del otro lado (Debe ser igual a la otra clase)
-        back_populates="ingredients"
-    )
+    # relaciones
+    measure: "Measure" = Relationship(back_populates="ingredients")
 
-    stock: Optional ["Stock"] = Relationship(
-        #Se declara como se llama la relación del otro lado (Debe ser igual a la otra clase)
-        back_populates="ingredient"
+    stock_rows: Optional[List["IngredientStock"]] = Relationship(
+        back_populates="ingredient",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )

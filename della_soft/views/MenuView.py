@@ -45,7 +45,7 @@ class MenuView(rx.State):
             #yield RecipeView.load_recipes()
             pass
         if screen == "stock_view":
-            #yield StockView.load_stock()
+            yield StockView.load_stock()
             pass
         if screen == "logout":
             yield AuthState.logout()

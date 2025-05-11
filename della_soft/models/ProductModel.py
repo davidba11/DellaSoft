@@ -1,31 +1,34 @@
-from typing import Optional, TYPE_CHECKING, List
 import reflex as rx
-
 from sqlmodel import Field, Relationship
+from typing import List, Optional, TYPE_CHECKING
+from enum import Enum
+from decimal import Decimal
+from sqlalchemy import Numeric   # ← para usar Decimal de forma correcta
 
-#Con productopedido
 if TYPE_CHECKING:
+    from .ProductStockModel import ProductStock
     from .ProductOrderModel import ProductOrder
-    from .CustomerModel import Customer
-    from .StockModel import Stock
+
+
+class ProductType(str, Enum):
+    IN_STOCK = "Precio Fijo"      # se vende desde stock
+    ON_DEMAND = "Precio Por Kilo" # se produce a pedido
+
 
 class Product(rx.Model, table=True):
-
     __tablename__ = "product"
 
-    id: int = Field(default=None, primary_key=True, nullable=False) #Se declara como PK
-    name: str = Field(nullable=False)
-    description: str = Field(nullable=False)
-    product_type: str = Field(default=None, nullable=False)
-    price: int = Field (default=0, nullable=False)
-    id_stock: int = Field(foreign_key="stock.id", nullable=False) #Se declara FK de stock
+    id: int = Field(primary_key=True, default=None)
+    name: str = Field(nullable=False, unique=True)
+    description: str | None = Field(default=None)
+    product_type: ProductType = Field(nullable=False)
+    price: int = Field(nullable=False)
 
-    product_detail: List["ProductOrder"] = Relationship(
-        #Se declara como se llama la relación del otro lado (Debe ser igual a la otra clase)
-        back_populates="product"
+    stock_rows: Optional[List["ProductStock"]] = Relationship(
+        back_populates="product",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
 
-    stock: Optional["Stock"] = Relationship(
-        #Se declara como se llama la relación del otro lado (Debe ser igual a la otra clase)
-        back_populates="products"
+    product_detail: Optional[List["ProductOrder"]] = Relationship(
+        back_populates="product"
     )
