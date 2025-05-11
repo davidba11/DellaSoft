@@ -5,3 +5,5 @@ assets/external/
 __pycache__/
 .states
 public/facturas
+alembic
+.venv
