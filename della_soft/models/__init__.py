@@ -10,3 +10,5 @@ from .ProductStockModel import ProductStock
 from .IngredientStockModel import IngredientStock
 from .IngredientModel import Ingredient
 from .MeasureModel import Measure
+from .RecipeDetailModel import RecipeDetail
+from .RecipeModel import Recipe

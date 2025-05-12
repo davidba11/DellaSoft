@@ -12,6 +12,6 @@ class Recipe (rx.Model, table=True):
     id: int = Field(default=None, primary_key=True)
     description: str
 
-    recipe_detail: List["RecipeDetail"] = Relationship(
+    recipe_details: List["RecipeDetail"] = Relationship(
         back_populates="recipe"
     )

@@ -382,7 +382,6 @@ def get_table_body(product: Product):
         color="#3E2723",
     )
 
-@rx.page(on_load=ProductView.load_products)
 def products() -> rx.Component:
     return rx.box(
         rx.vstack(
