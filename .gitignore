@@ -6,4 +6,7 @@ __pycache__/
 .states
 public/facturas
 alembic
-.venv
+.venv/
+.\.venv
+.venv/
+venv/
