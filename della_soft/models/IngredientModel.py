@@ -5,6 +5,7 @@ from typing import List, Optional, TYPE_CHECKING
 if TYPE_CHECKING:
     from .MeasureModel import Measure
     from .IngredientStockModel import IngredientStock
+    from .RecipeDetailModel import RecipeDetail
 
 
 class Ingredient(rx.Model, table=True):
@@ -18,6 +19,9 @@ class Ingredient(rx.Model, table=True):
     measure: "Measure" = Relationship(back_populates="ingredients")
 
     stock_rows: Optional[List["IngredientStock"]] = Relationship(
-        back_populates="ingredient",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+        back_populates="ingredient"
+    )
+
+    recipe_details: Optional[List["RecipeDetail"]] = Relationship(
+        back_populates="ingredient"
     )

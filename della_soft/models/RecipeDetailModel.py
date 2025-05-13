@@ -14,7 +14,7 @@ class RecipeDetail(rx.Model, table=True):
     __tablename__ = "recipeDetail"
 
     id: int = Field(default=None, primary_key=True, nullable=False) #Se declara como PK
-    quantity: int | None = Field(default=None, nullable=True)
+    quantity: float = Field(default=None, nullable=True)
     id_ingredient: int = Field(foreign_key="ingredient.id") #Se declara FK de producto
     id_recipe: int = Field(foreign_key="recipe.id") #Se declara FK de orden
 
@@ -26,5 +26,5 @@ class RecipeDetail(rx.Model, table=True):
 
     ingredient: "Ingredient" = Relationship(
         #Se declara como se llama la relación del otro lado (Debe ser igual a la otra clase)
-        back_populates="product_detail"
+        back_populates="recipe_details"
     )

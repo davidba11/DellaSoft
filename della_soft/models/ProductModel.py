@@ -1,5 +1,6 @@
 import reflex as rx
 from sqlmodel import Field, Relationship
+from sqlalchemy.orm import relationship
 from typing import List, Optional, TYPE_CHECKING
 from enum import Enum
 from decimal import Decimal
@@ -8,6 +9,7 @@ from sqlalchemy import Numeric   # ← para usar Decimal de forma correcta
 if TYPE_CHECKING:
     from .ProductStockModel import ProductStock
     from .ProductOrderModel import ProductOrder
+    from .RecipeModel import Recipe
 
 
 class ProductType(str, Enum):
@@ -23,6 +25,9 @@ class Product(rx.Model, table=True):
     description: str | None = Field(default=None)
     product_type: ProductType = Field(nullable=False)
     price: int = Field(nullable=False)
+    #id_recipe: Optional[int] = Field(foreign_key="recipe.id", nullable=True)
+
+    
 
     stock_rows: Optional[List["ProductStock"]] = Relationship(
         back_populates="product",
@@ -30,5 +35,9 @@ class Product(rx.Model, table=True):
     )
 
     product_detail: Optional[List["ProductOrder"]] = Relationship(
+        back_populates="product"
+    )
+
+    recipe: Optional["Recipe"] = Relationship(
         back_populates="product"
     )

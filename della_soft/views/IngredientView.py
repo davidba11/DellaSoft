@@ -33,7 +33,7 @@ class IngredientView(rx.State):
 
         resultados = []
         for o in ingredients:
-            medida = select_name_by_id(o.id_medida) or ""
+            medida = select_name_by_id(o.measure_id) or ""
             campos = [str(o.id), o.name, medida]
             if any(q in campo.lower() for campo in campos):
                 resultados.append({"id": o.id, "name": o.name, "medida": medida})
