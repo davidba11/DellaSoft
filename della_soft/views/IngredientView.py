@@ -33,7 +33,7 @@ class IngredientView(rx.State):
 
         resultados = []
         for o in ingredients:
-            medida = select_name_by_id(o.id_medida) or ""
+            medida = select_name_by_id(o.measure_id) or ""
             campos = [str(o.id), o.name, medida]
             if any(q in campo.lower() for campo in campos):
                 resultados.append({"id": o.id, "name": o.name, "medida": medida})
@@ -55,7 +55,7 @@ class IngredientView(rx.State):
 
         resultados = []
         for o in ingredientes:
-            medida = select_name_by_id(o.id_medida) or ""
+            medida = select_name_by_id(o.measure_id) or ""
             resultados.append({"id": o.id, "name": o.name, "medida": medida})
 
         self.total_items = len(resultados)
@@ -130,7 +130,7 @@ class IngredientView(rx.State):
     async def insert_ingredient_controller(self, form_data: dict):
         try:
             medida_id = int(form_data["id_measure"])
-            new_ingredient = create_ingredient(id="", name=form_data['name'], id_medida=medida_id)
+            new_ingredient = create_ingredient(id="", name=form_data['name'], measure_id=medida_id)
             yield IngredientView.load_ingredients()
             self.set()
         except BaseException as e:
