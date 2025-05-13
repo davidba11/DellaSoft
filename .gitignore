@@ -8,6 +8,8 @@ __pycache__/
 # Archivos de estado o caches propias
 .states/
 
+.web
+
 # Archivos o carpetas generadas por tu app
 public/facturas/
 assets/external/
