@@ -14,7 +14,7 @@ class RecipeDetail(rx.Model, table=True):
     __tablename__ = "recipe_detail"
 
     id: int = Field(default=None, primary_key=True, nullable=False) #Se declara como PK
-    quantity: int | None = Field(default=None, nullable=True)
+    quantity: float = Field(default=None, nullable=True)
     id_ingredient: int = Field(foreign_key="ingredient.id") #Se declara FK de producto
     id_recipe: int = Field(foreign_key="recipe.id") #Se declara FK de orden
 

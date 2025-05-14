@@ -5,6 +5,7 @@ from typing import List, Optional, TYPE_CHECKING
 if TYPE_CHECKING:
     from .MeasureModel import Measure
     from .IngredientStockModel import IngredientStock
+    from .RecipeDetailModel import RecipeDetail
 
 
 class Ingredient(rx.Model, table=True):
