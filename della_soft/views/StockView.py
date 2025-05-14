@@ -3,93 +3,72 @@ import reflex as rx
 from typing import List
 
 # ─── Servicios ──────────────────────────────────────────────────────────
-from ..services.IngredientStockService import select_all_stock_service, insert_ingredient_stock_service
-from ..services.IngredientService import select_all_ingredient_service
-from ..services.MeasureService import select_name_by_id
-# from ..services.ProductService import select_all_product_service  # ← para el futuro
+from ..services.IngredientService     import select_all_ingredient_service
+from ..services.IngredientStockService import (
+    select_all_stock_service   as select_all_ing_stock_service,
+    insert_ingredient_stock_service,
+)
+
+from ..services.ProductService        import select_all_product_service
+from ..services.ProductStockService   import (
+    select_all_stock_service   as select_all_prod_stock_service,
+    insert_product_stock_service,
+)
+from ..models.ProductModel            import ProductType
+from ..services.MeasureService        import select_name_by_id
 
 
-# ════════════════════════════════════════════════════════════════════════
-#  STATE
-# ════════════════════════════════════════════════════════════════════════
+# ╔═══════════════════════════════════════════════════════════════════════╗
+#║                                STATE                                  ║
+#╚═══════════════════════════════════════════════════════════════════════╝
 class StockView(rx.State):
-    """Vista Control de Stock con pestañas, búsqueda y formulario + autocomplete."""
-    # opciones de select
+    """Gestión unificada del stock de productos e ingredientes."""
+
+    # ───────── Selects ─────────
     type_options: list[str] = ["Producto", "Ingrediente"]
 
-    selected_base_id: int | None = None 
-
-    # pestaña seleccionada
+    # Pestaña activa
     selected_tab: str = "product"
 
-    # columnas tabla
+    # Columnas
     prod_columns = ["Producto", "Cantidad", "Mínimo", "Acciones"]
     ing_columns  = ["Ingrediente", "Cantidad", "Mínimo", "Medida", "Acciones"]
 
-    # datos tabla (placeholder)
+    # Datos tabulares
     product_rows:    list[dict] = []
     ingredient_rows: list[dict] = []
 
-    # paginación
-    offset = 0
-    limit  = 5
-    total_items = 0
-    _page_data: list[dict] = []
-
-    # búsqueda
+    # Paginación & búsqueda
+    offset       = 0
+    limit        = 5
+    total_items  = 0
+    _page_data:  list[dict] = []
     search_text: str = ""
 
-    # ───────── campos del modal “Agregar Stock” ─────────
-    stock_type:    str = "Producto"
-    quantity:      float = 0
-    min_quantity:  float = 0
+    # ───────── Modal ─────────
+    stock_type:   str  = "Ingrediente"
+    quantity:     float = 0
+    min_quantity: float = 0
 
-    # autocompletar base de stock
-    base_search: str = ""
-    base_dropdown_open: bool = False
-    selected_base_label: str = ""
+    # Autocomplete base de stock
+    base_search            = ""
+    base_dropdown_open     = False
+    selected_base_label    = ""
+    selected_base_id: int | None = None
     base_options: List[str] = []
-    _base_map: dict[str, str] = {}        # label → id (str)
+    _base_map: dict[str, str] = {}          # label → id(str)
 
-    # ══════════ Eventos de tabla / búsqueda / paginación ═════════
+    # ════════════════════════ TABLA / BÚSQUEDA ════════════════════════
     @rx.event
     async def set_tab(self, tab: str):
         self.selected_tab = tab
-        self.offset = 0
+        self.offset       = 0
         await self.load_stock()
-
-    @rx.event
-    async def load_stock(self):
-        """Carga los datos de la pestaña actual."""
-        if self.selected_tab == "product":
-            # … lógica que ya tengas
-            rows = self.product_rows
-        else:
-            # Pestaña INGREDIENTES
-            stock_rows = await select_all_stock_service()
-            ingredientes = await select_all_ingredient_service()
-            ing_map = {ing.id: ing for ing in ingredientes}
-
-            self.ingredient_rows = [
-                {
-                    "name":    ing_map[row.ingredient_id].name if row.ingredient_id in ing_map else "-",
-                    "qty":     row.quantity,
-                    "min":     row.min_quantity,
-                    "measure": select_name_by_id(ing_map[row.ingredient_id].measure_id)
-                            if row.ingredient_id in ing_map else "-",
-                }
-                for row in stock_rows
-            ]
-            rows = self.ingredient_rows
-
-        # … resto igual
-        self.total_items = len(rows)
-        self._page_data  = rows[self.offset : self.offset + self.limit]
 
     @rx.event
     async def on_search(self, value: str):
         self.search_text = value or ""
-        self.offset = 0
+        self.offset      = 0
         await self.load_stock()
 
     @rx.event
@@ -116,33 +95,86 @@ class StockView(rx.State):
     def page_rows(self) -> list[dict]:
         return self._page_data
 
-    # ══════════ Eventos del modal (alta stock) ═════════
+    # ------------------------------------------------------------------
+    @rx.event
+    async def load_stock(self):
+        """Genera las filas (filtradas por búsqueda) de la pestaña actual."""
+        txt = self.search_text.lower()
+
+        if self.selected_tab == "product":
+            # Stock de productos
+            prod_stock   = await select_all_prod_stock_service()
+            productos    = await select_all_product_service()
+            prod_map     = {p.id: p for p in productos}
+
+            filas = []
+            for row in prod_stock:
+                prod = prod_map.get(row.product_id)
+                if not prod:
+                    continue
+                if txt and txt not in prod.name.lower():
+                    continue
+                filas.append({
+                    "name": prod.name,
+                    "qty":  row.quantity,
+                    "min":  row.min_quantity,
+                })
+            self.product_rows = filas
+            rows = filas
+        else:
+            # Stock de ingredientes
+            ing_stock = await select_all_ing_stock_service()
+            ingredientes = await select_all_ingredient_service()
+            ing_map = {i.id: i for i in ingredientes}
+
+            filas = []
+            for row in ing_stock:
+                ing = ing_map.get(row.ingredient_id)
+                if not ing:
+                    continue
+                if txt and txt not in ing.name.lower():
+                    continue
+                filas.append({
+                    "name":    ing.name,
+                    "qty":     row.quantity,
+                    "min":     row.min_quantity,
+                    "measure": select_name_by_id(ing.measure_id),
+                })
+            self.ingredient_rows = filas
+            rows = filas
+
+        self.total_items = len(rows)
+        self._page_data  = rows[self.offset : self.offset + self.limit]
+
+    # ══════════════════════════ MODAL ═════════════════════════
     @rx.event
     async def change_stock_type(self, value: str):
+        """Al cambiar entre Producto / Ingrediente recarga las opciones."""
         self.stock_type = value
-        # reset dependientes
-        self.base_search = ""
-        self.selected_base_label = ""
-        self.base_dropdown_open = False
-        self.base_options = []
-        self._base_map = {}
+        self.base_search          = ""
+        self.selected_base_label  = ""
+        self.selected_base_id     = None
+        self.base_dropdown_open   = False
+        self.base_options         = []
+        self._base_map            = {}
 
         if value == "Ingrediente":
             ingredientes = await select_all_ingredient_service()
-            opts, cmap = [], {}
             for ing in ingredientes:
-                label = ing.name
-                opts.append(label)
-                cmap[label] = str(ing.id)
-            self.base_options = opts
-            self._base_map = cmap
-        # else: productos cuando corresponda
+                self.base_options.append(ing.name)
+                self._base_map[ing.name] = str(ing.id)
+        else:
+            productos = await select_all_product_service()
+            for p in productos:
+                if p.product_type == ProductType.IN_STOCK:
+                    self.base_options.append(p.name)
+                    self._base_map[p.name] = str(p.id)
         self.set()
 
-    # autocomplete
+    # ------- autocomplete -------
     @rx.event
     def on_base_search(self, value: str):
-        self.base_search = value or ""
+        self.base_search        = value or ""
         self.base_dropdown_open = True
         self.set()
 
@@ -150,69 +182,74 @@ class StockView(rx.State):
     def filtered_base_options(self) -> List[str]:
         if not self.base_search:
             return self.base_options
-        txt = self.base_search.lower()
-        return [opt for opt in self.base_options if txt in opt.lower()]
+        t = self.base_search.lower()
+        return [o for o in self.base_options if t in o.lower()]
 
     @rx.event
     def select_base(self, label: str):
         self.selected_base_label = label
-        self.selected_base_id   = int(self._base_map[label])  # <── guarda el id
-        self.base_search        = label
-        self.base_dropdown_open = False
+        self.selected_base_id    = int(self._base_map[label])
+        self.base_search         = label
+        self.base_dropdown_open  = False
         self.set()
 
-    # cantidades
+    # ------- cantidades -------
     @rx.event
-    def change_quantity(self, value: str):
-        self.quantity = float(value or 0)
-
+    def change_quantity(self, v: str):     self.quantity     = float(v or 0)
     @rx.event
-    def change_min_quantity(self, value: str):
-        self.min_quantity = float(value or 0)
+    def change_min_quantity(self, v: str): self.min_quantity = float(v or 0)
 
     @rx.event
     def reset_modal(self):
-        """Restablece valores por defecto cada vez que se abre el modal."""
-        self.stock_type = "Ingrediente"
-        self.selected_base_id = None
-        self.quantity = 0
-        self.min_quantity = 0
-        self.base_search = ""
-        self.selected_base_label = ""
+        self.stock_type         = ""
+        self.quantity           = 0
+        self.min_quantity       = 0
+        self.base_search        = ""
+        self.selected_base_label= ""
+        self.selected_base_id   = None
         self.base_dropdown_open = False
-        self.base_options = []
-        self._base_map = {}
+        self.base_options       = []
+        self._base_map          = {}
         self.set()
 
+    # ------- submit -------
     @rx.event
     async def submit_stock(self, form_data: dict):
-        if self.stock_type == "Ingrediente":
-            if self.selected_base_id is None:
-                yield rx.toast("Seleccione un ingrediente antes de guardar", color_scheme="red")
-                return
+        if self.selected_base_id is None:
+            yield rx.toast("Debe seleccionar la base de stock", color_scheme="red")
+            return
 
-            await insert_ingredient_stock_service(
-                ingredient_id = self.selected_base_id,      # <── ahora sí se envía
-                quantity      = float(form_data["quantity"]),
-                min_quantity  = float(form_data["min_quantity"]),
-            )
-            yield rx.toast("Stock de ingrediente guardado")
-        else:
-            yield rx.toast("Por ahora sólo se admite stock de ingredientes")
+        qty = float(form_data["quantity"])
+        mn  = float(form_data["min_quantity"])
 
-# ═════════════════════════════════════════════════════
-#  COMPONENTES UI
-# ═════════════════════════════════════════════════════
-def get_title() -> rx.Component:
-    return rx.text(
-        "Control de Stock",
-        size="7",
-        weight="bold",
-        color="#3E2723",
-        fontFamily="DejaVu Sans Mono",
-    )
+        try:
+            if self.stock_type == "Ingrediente":
+                await insert_ingredient_stock_service(
+                    ingredient_id = self.selected_base_id,
+                    quantity      = qty,
+                    min_quantity  = mn,
+                )
+                yield rx.toast("Stock de ingrediente guardado")
+                yield StockView.load_stock()  
+            else:
+                await insert_product_stock_service(
+                    product_id    = self.selected_base_id,
+                    quantity      = qty,
+                    min_quantity  = mn,
+                )
+                yield rx.toast("Stock de producto guardado")
+                yield StockView.load_stock()
+        except ValueError as e:
+            yield rx.toast(str(e), color_scheme="red")
 
-# ─── pestañas ─────────────────────────────────────────
+# ╔═══════════════════════════════════════════════════════════════════════╗
+#║                       COMPONENTES DE UI                               ║
+#╚═══════════════════════════════════════════════════════════════════════╝
+def get_title():
+    return rx.text("Control de Stock", size="7", weight="bold",
+                   color="#3E2723", fontFamily="DejaVu Sans Mono")
+
+# ─── pestañas ───────────────────────────────────────────────────────────
 def tab_button(label: str, value: str):
     return rx.button(
         label,
@@ -229,24 +266,23 @@ def tabs_bar():
     return rx.hstack(
         tab_button("Stock de Productos",   "product"),
         tab_button("Stock de Ingredientes","ingredient"),
-        width="100%",
-        margin_bottom="0.5em",
         justify="center",
         gap="2",
+        width="100%",
     )
 
-def search_stock_component() -> rx.Component:
+def search_stock_component():
     return rx.input(
         placeholder="Buscar Stock",
         background_color="#3E2723",
         color="white",
         border_radius="8px",
-        width="250px",        # ← antes era "50%"; ahora queda como en Productos
+        width="250px",
         on_change=StockView.on_search,
     )
 
-# ─── formulario modal ────────────────────────────────
-def create_stock_form() -> rx.Component:
+# ─── modal ──────────────────────────────────────────────────────────────
+def create_stock_form():
     return rx.form(
         rx.vstack(
             # Tipo
@@ -254,7 +290,6 @@ def create_stock_form() -> rx.Component:
                 rx.text("Tipo de Stock:", color="white"),
                 rx.select(
                     StockView.type_options,
-                    name="stock_type",
                     value=StockView.stock_type,
                     on_change=StockView.change_stock_type,
                     background_color="#3E2723",
@@ -273,23 +308,21 @@ def create_stock_form() -> rx.Component:
                             color="white",
                             value=StockView.base_search,
                             on_change=StockView.on_base_search,
-                            is_disabled=StockView.stock_type == "Producto",
+                            is_disabled=False,
                         ),
                         rx.cond(
                             StockView.base_dropdown_open,
                             rx.vstack(
                                 rx.foreach(
                                     StockView.filtered_base_options,
-                                    lambda label: rx.box(
-                                        rx.text(label, text_align="center", color="#3E2723"),
-                                        on_click=lambda lbl=label: StockView.select_base(lbl),
+                                    lambda lbl: rx.box(
+                                        rx.text(lbl, text_align="center", color="#3E2723"),
+                                        on_click=lambda l=lbl: StockView.select_base(l),
                                         style={
                                             "padding": "0.5rem",
                                             "cursor": "pointer",
-                                            "_hover": {
-                                                "background_color": "#A67B5B",
-                                                "color": "white",
-                                            },
+                                            "_hover": {"background_color": "#A67B5B",
+                                                       "color": "white"},
                                         },
                                     ),
                                 ),
@@ -299,122 +332,70 @@ def create_stock_form() -> rx.Component:
                                 max_height="160px",
                                 overflow_y="auto",
                                 style={
-                                    "position": "absolute",
-                                    "top": "100%",
-                                    "left": 0,
-                                    "right": 0,
-                                    "z_index": 1000,
-                                },
+                                    "position": "absolute", "top": "100%", "left": 0,
+                                    "right": 0, "z_index": 1000},
                             ),
                         ),
                         style={"position": "relative", "width": "100%"},
                     ),
-                    rx.input(
-                        name="stock_base",
-                        type="hidden",
-                        value=StockView.selected_base_label,
-                    ),
+                    rx.input(name="stock_base", type="hidden",
+                             value=StockView.selected_base_label),
                 ),
                 columns="1fr 2fr", gap="3", width="100%",
             ),
-            # Cantidad actual
+            # Cantidades
             rx.grid(
                 rx.text("Cantidad Actual:", color="white"),
-                rx.input(
-                    type="number",
-                    name="quantity",
-                    value=StockView.quantity,
-                    on_change=StockView.change_quantity,
-                    background_color="#3E2723",
-                    color="white",
-                ),
+                rx.input(type="number", name="quantity",
+                         value=StockView.quantity,
+                         on_change=StockView.change_quantity,
+                         background_color="#3E2723", color="white"),
                 columns="1fr 2fr", gap="3", width="100%",
             ),
-            # Cantidad mínima
             rx.grid(
                 rx.text("Cantidad Mínima:", color="white"),
-                rx.input(
-                    type="number",
-                    name="min_quantity",
-                    value=StockView.min_quantity,
-                    on_change=StockView.change_min_quantity,
-                    background_color="#3E2723",
-                    color="white",
-                ),
+                rx.input(type="number", name="min_quantity",
+                         value=StockView.min_quantity,
+                         on_change=StockView.change_min_quantity,
+                         background_color="#3E2723", color="white"),
                 columns="1fr 2fr", gap="3", width="100%",
             ),
             rx.divider(color="white"),
             rx.dialog.close(
-                rx.button(
-                    rx.icon("save", size=22),
-                    "Guardar",
-                    type="submit",
-                    background_color="#3E2723",
-                    color="white",
-                    size="2",
-                    variant="solid",
-                )
+                rx.button(rx.icon("save", size=22), "Guardar",
+                          type="submit", background_color="#3E2723",
+                          color="white", size="2", variant="solid"),
             ),
             spacing="3",
         ),
         on_submit=StockView.submit_stock,
         style={"width": "100%", "gap": "3", "padding": "3"},
-        debug=True,
-        align="center",
-        justify="center",
+        align="center", justify="center", debug=True,
     )
 
-def create_stock_modal() -> rx.Component:
+def create_stock_modal():
     return rx.dialog.root(
         rx.dialog.trigger(
-            rx.button(
-                rx.icon("plus", size=22),
-                background_color="#3E2723",
-                size="2",
-                variant="solid",
-                on_click=StockView.reset_modal,
-            )
+            rx.button(rx.icon("plus", size=22),
+                      background_color="#3E2723",
+                      size="2", variant="solid",
+                      on_click=StockView.reset_modal),
         ),
         rx.dialog.content(
-            rx.flex(
-                rx.dialog.title("Agregar Stock"),
-                create_stock_form(),
-                direction="column",
-                align="center",
-                justify="center",
-                gap="3",
-            ),
+            rx.flex(rx.dialog.title("Agregar Stock"),
+                    create_stock_form(),
+                    direction="column", align="center",
+                    justify="center", gap="3"),
             background_color="#A67B5B",
-            style={"max_width": "500px"},
-            padding="3",
+            style={"max_width": "500px"}, padding="3",
         ),
-        style={"width": "300px"},
     )
 
-def main_actions_bar() -> rx.Component:
-    return rx.hstack(
-        search_stock_component(),
-        create_stock_modal(),
-        justify="center",
-        gap="3",
-        width="80vw",
-    )
+def main_actions_bar():
+    return rx.hstack(search_stock_component(), create_stock_modal(),
+                     justify="center", gap="3", width="80vw")
 
-# ─── tabla ───────────────────────────────────────────
-def get_table_header():
-    return rx.table.row(
-        rx.foreach(
-            rx.cond(
-                StockView.selected_tab == "product",
-                StockView.prod_columns,
-                StockView.ing_columns,
-            ),
-            lambda c: rx.table.column_header_cell(c),
-        ),
-        color="#3E2723",
-        background_color="#A67B5B",
-    )
-
+# ─── tabla ──────────────────────────────────────────────────────────────
 def acciones_cell():
     return rx.hstack(
         rx.button(rx.icon("square-pen", size=22),
@@ -424,81 +405,59 @@ def acciones_cell():
         spacing="2",
     )
 
-def prod_row(row: dict):
+def prod_row(r): return rx.table.row(
+    rx.table.cell(r["name"]), rx.table.cell(r["qty"]),
+    rx.table.cell(r["min"]),  rx.table.cell(acciones_cell()),
+    color="#3E2723",
+)
+def ing_row(r): return rx.table.row(
+    rx.table.cell(r["name"]), rx.table.cell(r["qty"]),
+    rx.table.cell(r["min"]),  rx.table.cell(r["measure"]),
+    rx.table.cell(acciones_cell()), color="#3E2723",
+)
+
+def get_table_header():
     return rx.table.row(
-        rx.table.cell(row.get("name", "")),
-        rx.table.cell(row.get("qty", "")),
-        rx.table.cell(row.get("min", "")),
-        rx.table.cell(acciones_cell()),
-        color="#3E2723",
+        rx.foreach(
+            rx.cond(StockView.selected_tab == "product",
+                    StockView.prod_columns, StockView.ing_columns),
+            lambda c: rx.table.column_header_cell(c)),
+        color="#3E2723", background_color="#A67B5B",
     )
 
-def ing_row(row: dict):
-    return rx.table.row(
-        rx.table.cell(row.get("name", "")),
-        rx.table.cell(row.get("qty", "")),
-        rx.table.cell(row.get("min", "")),
-        rx.table.cell(row.get("measure", "")),
-        rx.table.cell(acciones_cell()),
-        color="#3E2723",
-    )
+def get_table_body(r): return rx.cond(
+    StockView.selected_tab == "product", prod_row(r), ing_row(r),
+)
 
-def get_table_body(row: dict):
-    return rx.cond(
-        StockView.selected_tab == "product",
-        prod_row(row),
-        ing_row(row),
-    )
-
-# ─── paginación ──────────────────────────────────────
+# ─── paginación ─────────────────────────────────────────────────────────
 def pagination_controls():
     return rx.hstack(
-        rx.button(
-            rx.icon("arrow-left", size=22),
-            on_click=StockView.prev_page,
-            is_disabled=StockView.offset <= 0,
-            background_color="#3E2723",
-            size="2",
-            variant="solid",
-        ),
+        rx.button(rx.icon("arrow-left", size=22),
+                  on_click=StockView.prev_page,
+                  is_disabled=StockView.offset <= 0,
+                  background_color="#3E2723", size="2", variant="solid"),
         rx.text(StockView.current_page, " de ", StockView.num_total_pages),
-        rx.button(
-            rx.icon("arrow-right", size=22),
-            on_click=StockView.next_page,
-            is_disabled=StockView.offset + StockView.limit >= StockView.total_items,
-            background_color="#3E2723",
-            size="2",
-            variant="solid",
-        ),
-        justify="center",
-        color="#3E2723",
+        rx.button(rx.icon("arrow-right", size=22),
+                  on_click=StockView.next_page,
+                  is_disabled=StockView.offset + StockView.limit >= StockView.total_items,
+                  background_color="#3E2723", size="2", variant="solid"),
+        justify="center", color="#3E2723",
     )
 
-# ─── página ──────────────────────────────────────────
+# ─── página ─────────────────────────────────────────────────────────────
 @rx.page(on_load=StockView.load_stock)
-def stock() -> rx.Component:
+def stock():
     return rx.box(
         rx.vstack(
-            get_title(),
-            tabs_bar(),
-            main_actions_bar(),
-            rx.table.root(
-                rx.table.header(get_table_header()),
-                rx.table.body(rx.foreach(StockView.page_rows, get_table_body)),
-                width="80vw",
-                background_color="#FFF8E1",
-                border_radius="20px",
-            ),
+            get_title(), tabs_bar(), main_actions_bar(),
+            rx.table.root(rx.table.header(get_table_header()),
+                          rx.table.body(rx.foreach(StockView.page_rows, get_table_body)),
+                          width="80vw", background_color="#FFF8E1",
+                          border_radius="20px"),
             pagination_controls(),
-            spacing="5",
-            align="center",
-            width="80vw",
+            spacing="5", align="center", width="80vw",
         ),
-        display="flex",
-        justify_content="center",
-        align_items="flex-start",
-        text_align="center",
-        background_color="#FDEFEA",
-        width="92vw",
-        height="80vh",
+        display="flex", justify_content="center", align_items="flex-start",
+        text_align="center", background_color="#FDEFEA",
+        width="92vw", height="80vh",
     )
