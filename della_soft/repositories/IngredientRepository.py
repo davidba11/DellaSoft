@@ -40,3 +40,12 @@ def insert_ingredient(ingredient: Ingredient):
         session.commit()
         query = select(Ingredient)
         return session.exec(query).all()
+    
+
+def update_ingredient(ingredient: Ingredient):
+    engine = connect()
+    with Session(engine) as session:
+        merged = session.merge(ingredient)  
+        session.commit()
+        session.refresh(merged)       
+        return merged

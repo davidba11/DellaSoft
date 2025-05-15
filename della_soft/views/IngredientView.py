@@ -1,7 +1,7 @@
 import reflex as rx
 from typing import List
 
-from ..services.IngredientService import select_all_ingredient_service, select_ingredient_service, create_ingredient
+from ..services.IngredientService import select_all_ingredient_service, select_ingredient_service, create_ingredient, update_ingredient_service
 
 from ..services.MeasureService import select_name_by_id, select_all_measure_service
 
@@ -26,6 +26,60 @@ class IngredientView(rx.State):
     measure_options: List[str] = []
     _measure_map: dict[str, int]
     measure_ingredient_label = ""
+
+    edit_modal_open: bool = False
+    modal_ingredient: Ingredient | None = None
+    create_modal_open: bool = False
+    edit_modal_open: bool = False
+
+
+    @rx.event
+    async def open_edit_modal(self, ingredient_id: int):
+        ingredient = next((o for o in await select_all_ingredient_service() if o.id == ingredient_id), None)
+        if ingredient:
+            await self.load_measures()
+            self.modal_ingredient = ingredient
+            self.selected_measure_id = ingredient.measure_id
+            label = next(
+                (lbl for lbl, mid in self._measure_map.items() if mid == ingredient.measure_id),
+                ""
+            )
+            self.selected_measure_label = label
+            self.measure_search = label
+            self.edit_modal_open = True
+            self.set()
+
+
+    @rx.event
+    def close_edit_modal(self):
+        self.edit_modal_open = False
+        self.modal_ingredient = None
+        self.selected_measure_label = ""
+        self.selected_measure_id = None
+        self.measure_search = ""
+        self.set()
+
+    @rx.event
+    def set_create_modal_open(self, value: bool):
+        self.create_modal_open = value
+        self.set()
+
+    @rx.event
+    async def update_ingredient_controller(self, form_data: dict):
+        try:
+            ingredient_id = int(form_data["id"])
+            measure_id = int(form_data["id_measure"])
+            name = form_data["name"].strip()
+            updated_ingredient = Ingredient(id=ingredient_id, name=name, measure_id=measure_id)
+            update_ingredient_service(updated_ingredient)
+            yield rx.toast("Ingrediente actualizado correctamente.", duration=3000, position="bottom-right")
+            yield IngredientView.close_edit_modal()    # <--- Cierra el modal de edición
+            yield IngredientView.load_ingredients()
+            self.set()
+        except Exception as e:
+            print("Error actualizando ingrediente:", e)
+            yield rx.toast("Error al actualizar el ingrediente.", duration=3000, position="bottom-right", status="error")
+
 
     async def get_all_ingredients(self):
         ingredients = await select_all_ingredient_service()
@@ -130,12 +184,15 @@ class IngredientView(rx.State):
     async def insert_ingredient_controller(self, form_data: dict):
         try:
             medida_id = int(form_data["id_measure"])
-            new_ingredient = create_ingredient(id="", name=form_data['name'], measure_id=medida_id)
+            create_ingredient(id="", name=form_data['name'], measure_id=medida_id)
+            yield rx.toast("Ingrediente creado correctamente.", duration=3000, position="bottom-right")
+            yield IngredientView.set_create_modal_open(False)   # <--- Cierra el modal de creación
             yield IngredientView.load_ingredients()
             self.set()
         except BaseException as e:
             print(e.args)
-
+            yield rx.toast("Error al crear el ingrediente.", duration=3000, position="bottom-right", status="error")
+   
     @rx.var
     def selected_measure_str(self) -> str:
         """Devuelve el id como string o vacío si aún no hay selección."""
@@ -228,17 +285,14 @@ def create_ingredient_form() -> rx.Component:
                 width="100%",
             ),
             rx.divider(color="white"),
-            rx.dialog.close(
-                rx.button(
-                    rx.icon("save", size=22),
-                    type="submit",
-                    background_color="#3E2723",
-                    color="white",
-                    size="2",
-                    variant="solid",
-                )
-            ),
-            spacing="3",
+            rx.button(
+    rx.icon("save", size=22),            # ← AQUÍ el texto, sin children=
+    type="submit",
+    background_color="#3E2723",
+    color="white",
+    size="2",
+    variant="solid",
+        ),
         ),
         on_submit=IngredientView.insert_ingredient_controller,
         style={"width": "100%", "gap": "3", "padding": "3"},
@@ -255,7 +309,11 @@ def create_ingredient_modal() -> rx.Component:
                 background_color="#3E2723",
                 size="2",
                 variant="solid",
-                on_click=IngredientView.load_measures,
+                # Abre el modal y carga las medidas
+                on_click=lambda: [
+                    IngredientView.load_measures(),
+                    IngredientView.set_create_modal_open(True)
+                ],
             )
         ),
         rx.dialog.content(
@@ -269,8 +327,127 @@ def create_ingredient_modal() -> rx.Component:
             ),
             background_color="#A67B5B",
         ),
+        open=IngredientView.create_modal_open,
+        on_open_change=IngredientView.set_create_modal_open,
         style={"width": "300px"}
-    ),
+    )
+
+def edit_ingredient_form() -> rx.Component:
+    return rx.form(
+        rx.vstack(
+            rx.input(
+                name="id",
+                type="hidden",
+                value=rx.cond(
+                    IngredientView.modal_ingredient,
+                    IngredientView.modal_ingredient.id,
+                    ""
+                ),
+            ),
+            rx.grid(
+                rx.text("Ingrediente:", color="white"),
+                rx.input(
+                    placeholder="Ingrediente",
+                    name="name",
+                    background_color="#3E2723",
+                    color="white",
+                    width="100%",
+                    default_value=rx.cond(
+                        IngredientView.modal_ingredient,
+                        IngredientView.modal_ingredient.name,
+                        ""
+                    ),
+                ),
+                rx.text("Medida:", color="white"),
+                rx.vstack(
+                    rx.box(
+                        rx.input(
+                            placeholder="Buscar Medida...",
+                            background_color="#5D4037",
+                            color="white",
+                            value=IngredientView.measure_search,
+                            on_change=IngredientView.on_measure_search,
+                        ),
+                        rx.cond(
+                            IngredientView.measure_dropdown_open,
+                            rx.vstack(
+                                rx.foreach(
+                                    IngredientView.filtered_measure_options,
+                                    lambda label: rx.box(
+                                        rx.text(label, text_align="center", color="#3E2723"),
+                                        on_click=lambda label=label: IngredientView.select_measure(label),
+                                        style={
+                                            "padding": "0.5rem",
+                                            "cursor": "pointer",
+                                            "_hover": {"background_color": "#A67B5B", "color": "white"},
+                                        },
+                                    ),
+                                ),
+                                background_color="#FFF8E1",
+                                border="1px solid #A67B5B",
+                                border_radius="0 0 8px 8px",
+                                max_height="160px",
+                                overflow_y="auto",
+                                style={
+                                    "position": "absolute",
+                                    "top": "100%",
+                                    "left": 0,
+                                    "right": 0,
+                                    "z_index": 1000,
+                                },
+                            ),
+                        ),
+                        style={"position": "relative", "width": "100%"},
+                    ),
+                    rx.input(
+                        name="id_measure",
+                        type="hidden",
+                        value=IngredientView.selected_measure_str,
+                    ),
+                ),
+                columns="1fr 2fr",
+                gap="3",
+                width="100%",
+            ),
+            rx.divider(color="white"),
+            rx.dialog.close(
+                rx.button(
+                    rx.icon("save", size=22), 
+                    type="submit",
+                    background_color="#3E2723",
+                    color="white",
+                    size="2",
+                    variant="solid",
+                )
+            ),
+            spacing="3",
+        ),
+        on_submit=IngredientView.update_ingredient_controller,
+        style={"width": "100%", "gap": "3", "padding": "3"},
+        debug=True,
+        align="center",
+        justify="center",
+    )
+
+
+def edit_ingredient_modal() -> rx.Component:
+    return rx.dialog.root(
+        rx.dialog.content(
+            rx.flex(
+                rx.dialog.title('Editar Ingrediente'),
+                edit_ingredient_form(),
+                justify='center',
+                align='center',
+                direction='column',
+                weight="bold"
+            ),
+            background_color="#A67B5B",
+        ),
+        open=IngredientView.edit_modal_open,
+        on_open_change=IngredientView.close_edit_modal,
+        style={"width": "300px"}
+    )
+
 
 def main_actions_form():
     return rx.hstack(
@@ -302,9 +479,9 @@ def get_table_body(ingredient: dict) -> rx.Component:
                     background_color="#3E2723",
                     size="2",
                     variant="solid",
-                    #on_click=lambda: IngredientView.edit_ingredient(ingredient["id"]),
+                    on_click=lambda: IngredientView.open_edit_modal(ingredient["id"]),
                 ),
-                spacing="2",  # <-- aquí el espacio entre botones
+                spacing="2",
             )
         ),
         color="#3E2723",
@@ -340,6 +517,7 @@ def ingredients() -> rx.Component:
         rx.vstack(
             get_title(),
             main_actions_form(),
+            edit_ingredient_modal(),   # <-- Aquí lo agregas
             rx.table.root(
                 rx.table.header(
                     get_table_header(),
@@ -352,7 +530,7 @@ def ingredients() -> rx.Component:
                 border_radius="20px",
             ),
             pagination_controls(),
-            spacing="5",  # Espaciado entre elementos
+            spacing="5",
             align="center",
             width="80vw",
         ),
