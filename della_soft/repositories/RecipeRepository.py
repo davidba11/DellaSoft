@@ -29,7 +29,7 @@ def select_all(*, session: Session | None = None) -> list[Recipe]:
         stmt = (
             select(Recipe)
             .options(
-                joinedload(Recipe.recipe_detail)           #  tu relación
+                joinedload(Recipe.recipe_details)           #  tu relación
                 .joinedload(RecipeDetail.ingredient)
             )
         )

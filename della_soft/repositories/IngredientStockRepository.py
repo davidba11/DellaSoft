@@ -43,3 +43,22 @@ def insert_stock(stock_row: IngredientStock) -> IngredientStock:
         session.commit()
         session.refresh(stock_row)      # ← devuelve el objeto con su id
         return stock_row
+
+def update_stock(
+    stock_id: int,
+    quantity: float,
+    min_quantity: float
+) -> IngredientStock:
+    """Actualiza las cantidades de un stock de ingrediente."""
+    engine = connect()
+    with Session(engine) as session:
+        db_row = session.get(IngredientStock, stock_id)
+        if db_row is None:
+            raise ValueError("Stock no encontrado")
+
+        db_row.quantity     = quantity
+        db_row.min_quantity = min_quantity
+        session.add(db_row)
+        session.commit()
+        session.refresh(db_row)
+        return db_row

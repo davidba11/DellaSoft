@@ -5,6 +5,7 @@ from ..models.ProductStockModel import ProductStock
 from ..repositories.ProductStockRepository import (
     select_all,
     insert_stock,
+    update_stock,
 )
 
 
@@ -37,3 +38,16 @@ async def insert_product_stock_service(
         min_quantity  = min_quantity,
     )
     return await asyncio.to_thread(insert_stock, row)
+
+async def update_product_stock_service(
+    stock_id: int,
+    quantity: float,
+    min_quantity: float,
+):
+    """
+    Actualiza un registro de stock de producto.
+    """
+    # ⬇️  pásale los tres argumentos que la función del repo espera
+    return await asyncio.to_thread(
+        update_stock, stock_id, quantity, min_quantity
+    )

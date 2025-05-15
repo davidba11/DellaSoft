@@ -6,6 +6,7 @@ from ..models.IngredientStockModel import IngredientStock
 from ..repositories.IngredientStockRepository import (
     select_all,
     insert_stock,
+    update_stock,
 )
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -26,3 +27,15 @@ async def insert_ingredient_stock_service(
         min_quantity  = min_quantity,
     )
     return await asyncio.to_thread(insert_stock, row)
+
+async def update_ingredient_stock_service(
+    stock_id: int,
+    quantity: float,
+    min_quantity: float,
+):
+    """
+    Actualiza un registro de stock de ingrediente.
+    """
+    return await asyncio.to_thread(
+        update_stock, stock_id, quantity, min_quantity
+    )
