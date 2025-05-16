@@ -22,7 +22,6 @@ async def select_all_stock_service() -> List[ProductStock]:
 #  INSERT
 # ────────────────────────────────────────────────────────────────
 async def insert_product_stock_service(
-    *,
     product_id: int,
     quantity: float,
     min_quantity: float,

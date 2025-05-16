@@ -211,7 +211,7 @@ class StockView(rx.State):
 
     @rx.event
     def reset_modal(self):
-        self.stock_type = "Ingrediente"
+        self.stock_type = ""
         self.quantity   = 0
         self.min_quantity = 0
         self._reset_base_lists()
