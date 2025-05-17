@@ -1,6 +1,7 @@
 import asyncio
 import reflex as rx
 
+from della_soft.repositories.LoginRepository import AuthState
 from rxconfig import config
 
 from typing import Any, List
@@ -351,7 +352,7 @@ def update_product_dialog_component(product) -> rx.Component:
 def main_actions_form():
     return rx.hstack(
         search_product_component(), 
-        create_product_modal(),
+        rx.cond(AuthState.is_admin, create_product_modal()),
         justify='center',
         style={"margin-top": "auto"}
     ),
@@ -374,9 +375,13 @@ def get_table_body(product: Product):
         rx.table.cell(product.product_type),
         rx.table.cell(product.price),
         rx.table.cell(
-            rx.hstack(
-               update_product_dialog_component(product),
+            rx.cond(
+                AuthState.is_admin,
+                rx.hstack(
+                update_product_dialog_component(product),
                delete_product_dialog_component(product.id)
+        ),
+                None  # Si NO es admin, no muestra nada en Acciones
             ),
         ),
         color="#3E2723",

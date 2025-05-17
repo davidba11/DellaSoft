@@ -15,6 +15,8 @@ from ..services.CustomerService import (
 from ..services.RolService import select_all_roles_service
 from ..services.SystemService import hash_password
 
+from ..repositories.LoginRepository import AuthState
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -37,7 +39,6 @@ class UserView(rx.State):
     ci: str = ''
     selected_role: str = ""
 
-    # --------- SETTERS para los inputs ---------
     @rx.event
     def set_first_name(self, value: str):
         self.first_name = value
@@ -232,7 +233,7 @@ def users() -> rx.Component:
     return rx.box(
         rx.vstack(
             get_title(),
-            main_actions_form(),
+            main_actions_form(),   # Botón crear solo admin
             rx.table.root(
                 rx.table.header(
                     get_table_header(),
@@ -278,9 +279,14 @@ def get_table_body(customer: Customer):
         rx.table.cell(customer.contact),
         rx.table.cell(customer.username),
         rx.table.cell(
-            rx.hstack(
-                update_customer_dialog_component(customer),
-                delete_user_dialog_component(customer.id)
+            # Solo muestra los botones si es admin
+            rx.cond(
+                AuthState.is_admin,
+                rx.hstack(
+                    update_customer_dialog_component(customer),
+                    delete_user_dialog_component(customer.id)
+                ),
+                None  # Si NO es admin, no muestra nada en Acciones
             ),
         ),
         color="#3E2723"
@@ -387,7 +393,7 @@ def create_user_form() -> rx.Component:
                 width="100%",
             ),
             rx.divider(color="white"),
-            rx.dialog.close(    # <- Esto cierra el modal al guardar con éxito
+            rx.dialog.close(
                 rx.button(
                     rx.icon("user-plus", size=22),
                     type="submit",
@@ -578,7 +584,7 @@ def update_customer_dialog_component(customer) -> rx.Component:
 def main_actions_form():
     return rx.hstack(
         search_customer_component(),
-        create_customer_dialog_component(),
+        rx.cond(AuthState.is_admin, create_customer_dialog_component()),  # Botón crear solo admin
         justify='center',
         style={"margin-top": "auto"}
     ),

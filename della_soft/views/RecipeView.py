@@ -1,6 +1,8 @@
 import reflex as rx
 from typing import List, Dict, Optional
 
+from della_soft.repositories.LoginRepository import AuthState
+
 from .ProductView import ProductView, get_table_header as product_table_header
 from ..services.ProductService import select_all_product_service
 from ..services.RecipeService import (
@@ -423,14 +425,20 @@ def get_table_body(product: Product):
         rx.table.cell(product.product_type),
         rx.table.cell(product.price),
         rx.table.cell(
-            rx.button(
-                rx.icon("square-pen", size=20),
-                rx.text("Receta"),
-                background_color="#3E2723",
-                size="2",
-                variant="solid",
-                on_click=lambda pid=product.id: RecipeView.handle_recipe_click(pid),
-                    ),
+    rx.cond(
+        AuthState.is_admin,
+        rx.button(
+            rx.icon("square-pen", size=20),
+            rx.text("Receta"),
+            background_color="#3E2723",
+            size="2",
+            variant="solid",
+            on_click=lambda pid=product.id: RecipeView.handle_recipe_click(pid),
+        ),
+        None  # Si NO es admin, no muestra nada en Acciones
+    ),
+
+        
             rx.cond(
     RecipeView.recipe_product_ids.contains(product.id),
     rx.button(
@@ -443,7 +451,7 @@ def get_table_body(product: Product):
         on_click=lambda pid=product.id: RecipeView.handle_view_recipe(pid),
     ),
     None
-)
+),
 
         ),
         color="#3E2723",
