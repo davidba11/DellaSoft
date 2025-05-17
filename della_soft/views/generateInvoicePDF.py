@@ -63,7 +63,7 @@ def generate_invoice_pdf(order_id: int) -> str:
         # Extraemos variables antes de cerrar la sesión
         customer_first_name = customer.first_name
         customer_last_name  = customer.last_name
-        customer_ci_div     = f"{customer.ci}-{customer.div}"
+        customer_ci_div     = f"{customer.ci}-{"" if customer.div==None else customer.div}"
         fecha_emision       = datetime.today().strftime("%d/%m/%Y")
 
     # 6) Generamos el PDF con el mismo formato que ya tienes

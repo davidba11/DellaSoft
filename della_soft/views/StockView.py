@@ -129,11 +129,12 @@ class StockView(rx.State):
                 if txt and txt not in prod.name.lower():
                     continue
                 filas.append({
-                    "stock_id":  row.id,          # 👈 necesario para editar
+                    "stock_id":  row.id,
                     "id":        prod.id,
                     "name":      prod.name,
                     "qty":       row.quantity,
                     "min":       row.min_quantity,
+                    "color":     stock_color(row.quantity, row.min_quantity),  # ← NUEVO
                 })
             self.product_rows = filas
             rows = filas
@@ -151,12 +152,13 @@ class StockView(rx.State):
                 if txt and txt not in ing.name.lower():
                     continue
                 filas.append({
-                    "stock_id":  row.id,          # 👈 necesario para editar
+                    "stock_id":  row.id,
                     "id":        ing.id,
                     "name":      ing.name,
                     "qty":       row.quantity,
                     "min":       row.min_quantity,
                     "measure":   select_name_by_id(ing.measure_id),
+                    "color":     stock_color(row.quantity, row.min_quantity),  # ← NUEVO
                 })
             self.ingredient_rows = filas
             rows = filas
@@ -275,6 +277,14 @@ class StockView(rx.State):
 def get_title():
     return rx.text("Control de Stock", size="7", weight="bold",
                    color="#3E2723", fontFamily="DejaVu Sans Mono")
+
+def stock_color(qty: float, min_qty: float) -> str:
+    """Devuelve el color a usar en la celda según la cantidad."""
+    if qty <= min_qty:          # rojo crítico
+        return "#da1208"
+    elif qty < min_qty + 3:     # naranja advertencia
+        return "#e9910a"
+    return "#3E2723"
 
 # ─── pestañas ───────────────────────────────────────────────────────────
 def tab_button(label: str, value: str):
@@ -497,22 +507,26 @@ def acciones_cell(row: dict, row_type: str):
         spacing="2",
     )
 
-def prod_row(r): return rx.table.row(
-    rx.table.cell(r["name"]),
-    rx.table.cell(r["qty"]),
-    rx.table.cell(r["min"]),
-    rx.table.cell(
-        acciones_cell(r, "Producto")   #  ← antes tenía el truco del False
-    ),
-    color="#3E2723",
-)
+def prod_row(r):
+    col = r["color"]                            # ← ya viene precalculado
+    return rx.table.row(
+        rx.table.cell(r["name"], color=col),
+        rx.table.cell(r["qty"],  color=col),
+        rx.table.cell(r["min"],  color=col),
+        rx.table.cell(acciones_cell(r, "Producto")),
+        color="#3E2723",
+    )
 
-def ing_row(r): return rx.table.row(
-    rx.table.cell(r["name"]), rx.table.cell(r["qty"]),
-    rx.table.cell(r["min"]),  rx.table.cell(r["measure"]),
-    rx.table.cell(acciones_cell(r, "Ingrediente")),
-    color="#3E2723",
-)
+def ing_row(r):
+    col = r["color"]
+    return rx.table.row(
+        rx.table.cell(r["name"],    color=col),
+        rx.table.cell(r["qty"],     color=col),
+        rx.table.cell(r["min"],     color=col),
+        rx.table.cell(r["measure"], color=col),
+        rx.table.cell(acciones_cell(r, "Ingrediente")),
+        color="#3E2723",
+    )
 
 def get_table_header():
     return rx.table.row(

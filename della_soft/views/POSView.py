@@ -559,6 +559,7 @@ def create_pos_form() -> rx.Component:
                     placeholder_color="white",
                     color="white",
                     width="100%",
+                    disabled=True,
                 ),
                 columns="1fr 2fr",
                 gap="3",
