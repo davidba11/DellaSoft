@@ -377,7 +377,7 @@ class POSView(rx.State):
                     transaction_date=datetime.now(),
                     status="PAGO",
                     id_POS=self.pos.id,
-                    id_user=1221,
+                    id_user=17,
                     id_order=order_id,
                 )
             )

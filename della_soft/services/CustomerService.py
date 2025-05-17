@@ -67,13 +67,21 @@ def update_user_service(**kwargs):
     return customer
 
 
-def create_user_service(id: int, first_name: str, last_name: str, contact: str, username: str, password: str, id_rol: int, ci: str):
-    customer = select_by_id(id)
-    if(len(customer) == 0):
-        customer_save = Customer(id=id, first_name=first_name, last_name=last_name, contact=contact, username=username, password=password, id_rol=id_rol, ci=ci)
-        return create_user(customer_save)
-    else:
-        raise ValueError("Ya existe un usuario con ese ID.")
+def create_user_service(first_name: str, last_name: str, contact: str, username: str, password: str, id_rol: int, ci: str, id: int = None):
+    if id is not None:
+        customer = select_by_id(id)
+        if len(customer) > 0:
+            raise ValueError("Ya existe un usuario con ese ID.")
+    customer_save = Customer(
+        first_name=first_name,
+        last_name=last_name,
+        contact=contact,
+        username=username,
+        password=password,
+        id_rol=id_rol,
+        ci=ci
+    )
+    return create_user(customer_save)
     
 def delete_customer_service(id: int):
     return delete_customer(id)  
