@@ -402,7 +402,7 @@ class POSView(rx.State):
                     transaction_date=datetime.now(),
                     status="REVERSO",
                     id_POS=self.pos.id,
-                    id_user=1221,
+                    id_user=AuthState.current_user_id,
                     id_order=order_id,
                 )
             )
@@ -431,7 +431,7 @@ class POSView(rx.State):
                     transaction_date=datetime.now(),
                     status="GASTO",
                     id_POS=self.pos.id,
-                    id_user=1221,
+                    id_user=AuthState.current_user_id,
                     id_order=None,
                 )
             )

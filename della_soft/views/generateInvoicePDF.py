@@ -1,5 +1,3 @@
-# della_soft/views/generateInvoicePDF.py
-
 import os
 from datetime import datetime
 from fpdf import FPDF
