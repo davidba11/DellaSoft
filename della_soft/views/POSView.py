@@ -325,6 +325,11 @@ class POSView(rx.State):
     async def process_payment(self, form_data: dict):
         order_id = int(form_data.get("order_id", 0))
         amount   = int(form_data.get("pending", 0))
+        auth = await self.get_state(AuthState)
+        user_id = auth.current_user_id
+        if user_id is None:
+            yield rx.toast("Sesión expirada. Vuelve a iniciar sesión")
+            return
 
         order = next((o for o in self.pos_data if o["id"] == order_id), None)
         if not order:
@@ -356,7 +361,7 @@ class POSView(rx.State):
                     transaction_date=datetime.now(),
                     status="PAGO",
                     id_POS=self.pos.id,
-                    id_user=AuthState.current_user_id,
+                    id_user=user_id,
                     id_order=order_id,
                 )
             )
@@ -387,6 +392,11 @@ class POSView(rx.State):
     async def process_reverse(self, form_data: dict):
         order_id = int(form_data.get("order_id", 0))
         amount   = int(form_data.get("reverse_amount", 0))
+        auth = await self.get_state(AuthState)
+        user_id = auth.current_user_id
+        if user_id is None:
+            yield rx.toast("Sesión expirada. Vuelve a iniciar sesión")
+            return
         order = next((o for o in self.pos_data if o["id"] == order_id), None)
         if not order:
             print(f"Pedido {order_id} no encontrado")
@@ -402,7 +412,7 @@ class POSView(rx.State):
                     transaction_date=datetime.now(),
                     status="REVERSO",
                     id_POS=self.pos.id,
-                    id_user=AuthState.current_user_id,
+                    id_user=user_id,
                     id_order=order_id,
                 )
             )
@@ -422,6 +432,11 @@ class POSView(rx.State):
     async def process_bill(self, form_data: dict):
         amount = int(form_data.get("bill_amount", 0))
         observation = form_data.get("observation", "").strip()
+        auth = await self.get_state(AuthState)
+        user_id = auth.current_user_id
+        if user_id is None:
+            yield rx.toast("Sesión expirada. Vuelve a iniciar sesión")
+            return
         try:
             create_transaction(
                 Transaction(
@@ -431,7 +446,7 @@ class POSView(rx.State):
                     transaction_date=datetime.now(),
                     status="GASTO",
                     id_POS=self.pos.id,
-                    id_user=AuthState.current_user_id,
+                    id_user=user_id,
                     id_order=None,
                 )
             )

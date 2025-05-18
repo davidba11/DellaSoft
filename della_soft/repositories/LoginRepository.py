@@ -40,7 +40,8 @@ class AuthState(rx.State):
                 self.current_user_id = user.id
                 self.error = ""
                 self.current_id_rol = user.id_rol
-                yield MenuView.MenuView.display_screen("orders_view") 
+                print(f"user.id: "+str(user.id))
+                yield MenuView.MenuView.display_screen("orders_view")
             else:
                 self.error = "Usuario o contraseña incorrectos"
                 self.is_logged_in = False
