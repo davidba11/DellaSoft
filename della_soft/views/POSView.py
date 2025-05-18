@@ -8,11 +8,12 @@ from ..services.SystemService import (
     get_sys_date_to_string_two,
     get_sys_date_three,
 )
+from ..repositories.LoginRepository import AuthState
 from ..services.POSService import POS_is_open, insert_pos_register, update_final_amount
 from ..services.OrderService import select_all_order_service, update_pay_amount_service
 from ..services.CustomerService import select_name_by_id
 from ..services.ProductOrderService import get_fixed_products_by_order_id
-from ..services.ProductStockService import update_stock_with_pay_service
+from ..services.ProductStockService import update_stock_with_pay_service, get_stock_by_product_service
 from ..models.POSModel import POS
 from ..models.OrderModel import Order
 from ..services.TransactionService import create_transaction
@@ -324,13 +325,28 @@ class POSView(rx.State):
     async def process_payment(self, form_data: dict):
         order_id = int(form_data.get("order_id", 0))
         amount   = int(form_data.get("pending", 0))
+
         order = next((o for o in self.pos_data if o["id"] == order_id), None)
         if not order:
             print(f"Pedido {order_id} no encontrado")
             return
 
-        new_total_paid = order["total_paid"] + amount
+        fixed_products = get_fixed_products_by_order_id(order_id)
 
+        for po in fixed_products:
+            stock_row = await get_stock_by_product_service(po.id_product)
+            if stock_row is None or stock_row.quantity < po.quantity:
+                yield rx.toast("Cantidad en stock superado. Favor reabastecer stock para continuar")
+                self.is_payment_invalid = True
+                self.payment_error = (
+                    f"Stock insuficiente para el producto ID {po.id_product} "
+                    f"(disponible: {stock_row.quantity if stock_row else 0}, "
+                    f"solicitado: {po.quantity})"
+                )
+                self.set()
+                return
+
+        new_total_paid = order["total_paid"] + amount
         try:
             create_transaction(
                 Transaction(
@@ -340,7 +356,7 @@ class POSView(rx.State):
                     transaction_date=datetime.now(),
                     status="PAGO",
                     id_POS=self.pos.id,
-                    id_user=1221,
+                    id_user=AuthState.current_user_id,
                     id_order=order_id,
                 )
             )
@@ -348,20 +364,23 @@ class POSView(rx.State):
         except Exception as e:
             print("Error al procesar pago/registro de transacción:", e)
             return
+
         update_final_amount(
             self.pos.id,
             self.pos.initial_amount,
             self.pos.final_amount + amount,
             self.pos.pos_date,
         )
+
         if new_total_paid >= order["total_order"]:
             try:
-                fixed_products = get_fixed_products_by_order_id(order_id)
                 for po in fixed_products:
                     await update_stock_with_pay_service(po.id_product, po.quantity)
-
             except Exception as e:
                 print("Error al actualizar stock:", e)
+
+        if amount == order["pending"]:
+            yield OrderView.generate_invoice_pdf_event(order_id)
         yield POSView.load_date()
 
     @rx.event

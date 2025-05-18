@@ -356,7 +356,7 @@ def create_recipe_form() -> rx.Component:
                 width="100%",
             ),
             rx.button(
-                "Añadir ingrediente",
+                rx.icon("plus", size=22),
                 type="button",
                 on_click=RecipeView.add_ingredient_row,
                 background_color="#3E2723",
@@ -364,7 +364,14 @@ def create_recipe_form() -> rx.Component:
             rx.divider(),
             rx.hstack(
                 rx.dialog.close(
-                    rx.button("Guardar", type="submit", background_color="#3E2723"),
+                    rx.button(
+                        rx.icon("save", size=22),
+                        type="submit",
+                        background_color="#3E2723",
+                        color="white",
+                        size="2",
+                        variant="solid",
+                    ),
                 ),
                 spacing="3",
             ),
@@ -442,35 +449,32 @@ def get_table_body(product: Product):
     return rx.table.row(
         rx.table.cell(product.name),
         rx.table.cell(product.description),
+        rx.table.cell(product.product_type),
+        rx.table.cell(product.price),
         rx.table.cell(
-    rx.cond(
-        AuthState.is_admin,
-        rx.button(
-            rx.icon("square-pen", size=20),
-            rx.text("Receta"),
-            background_color="#3E2723",
-            size="2",
-            variant="solid",
-            on_click=lambda pid=product.id: RecipeView.handle_recipe_click(pid),
-        ),
-        None  # Si NO es admin, no muestra nada en Acciones
-    ),
-
-        
             rx.cond(
-    RecipeView.recipe_product_ids.contains(product.id),
-    rx.button(
-        rx.icon("eye", size=20),
-        rx.text("Ver"),
-        background_color="#795548",
-        size="2",
-        variant="solid",
-        ml="2",
-        on_click=lambda pid=product.id: RecipeView.handle_view_recipe(pid),
-    ),
-    None
-),
-
+                AuthState.is_admin,
+                rx.button(
+                    rx.icon("square-pen", size=20),
+                    background_color="#3E2723",
+                    size="2",
+                    variant="solid",
+                    on_click=lambda pid=product.id: RecipeView.handle_recipe_click(pid),
+                ),
+                None
+            ),
+            rx.cond(
+                RecipeView.recipe_product_ids.contains(product.id),
+                rx.button(
+                    rx.icon("eye", size=20),
+                    background_color="#3E2723",
+                    size="2",
+                    variant="solid",
+                    ml="2",
+                    on_click=lambda pid=product.id: RecipeView.handle_view_recipe(pid),
+                ),
+                None
+            ),
         ),
         color="#3E2723",
     )

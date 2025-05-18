@@ -12,19 +12,16 @@ from ..repositories.ConnectDB import connect
 def generate_invoice_pdf(order_id: int) -> str:
     engine = connect()
     with Session(engine) as session:
-        # 1) Leemos la orden y el cliente
         order = session.get(Order, order_id)
         if not order:
             raise ValueError(f"No se encontró la orden con ID {order_id}")
 
         customer = session.get(Customer, order.id_customer)
 
-        # 2) Buscamos detalles de productos
         detalles = session.exec(
             select(ProductOrder).where(ProductOrder.id_order == order_id)
         ).all()
 
-        # 3) Calculamos subtotales de cada producto
         productos = []
         for det in detalles:
             producto = session.get(Product, det.id_product)
@@ -39,7 +36,6 @@ def generate_invoice_pdf(order_id: int) -> str:
         iva = round(total / 11, 2)
         total_letras = num2words(total, lang='es').capitalize() + " guaranies"
 
-        # 4) Verificamos si ya existe factura para esta orden
         existing = session.exec(
             select(Invoice).where(Invoice.id_order == order_id)
         ).one_or_none()
@@ -47,7 +43,6 @@ def generate_invoice_pdf(order_id: int) -> str:
         if existing:
             nueva_factura = existing
         else:
-            # 5) Si no existe, la creamos
             nueva_factura = Invoice(
                 iva=iva,
                 invoice_date=datetime.now(),
@@ -60,13 +55,11 @@ def generate_invoice_pdf(order_id: int) -> str:
         invoice_id = nueva_factura.id
         numero_factura = f"001-001-{invoice_id:06d}"
 
-        # Extraemos variables antes de cerrar la sesión
         customer_first_name = customer.first_name
         customer_last_name  = customer.last_name
-        customer_ci_div     = f"{customer.ci}-{"" if customer.div==None else customer.div}"
+        customer_ci_div     = f"{customer.ci}{"" if customer.div==None else "-"+customer.div}"
         fecha_emision       = datetime.today().strftime("%d/%m/%Y")
 
-    # 6) Generamos el PDF con el mismo formato que ya tienes
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", "B", 12)
@@ -110,8 +103,6 @@ def generate_invoice_pdf(order_id: int) -> str:
     pdf.cell(0, 8, f"TOTAL IVA (10%): {iva:,.0f} Gs", ln=True)
     pdf.cell(0, 8, f"TOTAL A PAGAR: {total:,.0f} Gs", ln=True)
     pdf.multi_cell(0, 8, f"SON: {total_letras}", border="B")
-
-    # 7) Guardamos en public/facturas y devolvemos la ruta absoluta
     base_dir   = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
     public_dir = os.path.join(base_dir, "public", "facturas")
     os.makedirs(public_dir, exist_ok=True)
