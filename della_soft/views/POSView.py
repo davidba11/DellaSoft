@@ -11,6 +11,8 @@ from ..services.SystemService import (
 from ..services.POSService import POS_is_open, insert_pos_register, update_final_amount
 from ..services.OrderService import select_all_order_service, update_pay_amount_service
 from ..services.CustomerService import select_name_by_id
+from ..services.ProductOrderService import get_fixed_products_by_order_id
+from ..services.ProductStockService import update_stock_with_pay_service
 from ..models.POSModel import POS
 from ..models.OrderModel import Order
 from ..services.TransactionService import create_transaction
@@ -39,7 +41,6 @@ def render_row(item: dict) -> rx.Component:
         rx.table.cell(rx.text(pending)),
         rx.table.cell(
             rx.hstack(
-                # Ver detalle
                 rx.button(
                     rx.icon("eye", size=22),
                     on_click=OrderView.open_view_modal(order_id),
@@ -48,7 +49,6 @@ def render_row(item: dict) -> rx.Component:
                     variant="solid",
                     title="Ver Pedido",
                 ),
-                # PDF o Pago
                 rx.cond(
                     total_paid == total_order,
                     rx.cond(
@@ -72,7 +72,6 @@ def render_row(item: dict) -> rx.Component:
                         order_id, total_paid, pending, total_order
                     ),
                 ),
-                # Reversar pago (undo) solo si total_paid > 0
                 rx.cond(
                     total_paid != 0,
                     reverse_dialog_component(
@@ -103,7 +102,6 @@ class POSView(rx.State):
     final_amount: float = 0.0
     pos: Optional[POS] = None
 
-    # búsqueda local y paginación
     pos_search: str = ""
     pos_data: List[dict] = []
     filtered_pos_data: List[dict] = []
@@ -118,17 +116,13 @@ class POSView(rx.State):
 
     @rx.event
     def toggle_show_paid(self, checked: bool):
-        """Se llama al cambiar el checkbox."""
         self.show_paid = checked
         self.apply_filters()
 
     def apply_filters(self):
-        # 1) partimos de todos los datos
         data = list(self.pos_data)
-        # 2) si no queremos ver pagados, filtramos solo pendientes
         if not self.show_paid:
             data = [o for o in data if o["pending"] > 0]
-        # 3) si hay texto de búsqueda, lo aplicamos sobre esa lista
         q = (self.pos_search or "").strip().lower()
         if q:
             filtered = []
@@ -142,7 +136,6 @@ class POSView(rx.State):
                 ):
                     filtered.append(o)
             data = filtered
-        # 4) actualizamos el estado
         self.filtered_pos_data = data
         self.total_items_pos = len(data)
         self.offset_pos = 0
@@ -150,7 +143,6 @@ class POSView(rx.State):
 
     @rx.event
     def set_payment_context(self, pending: int):
-        """Se llama al abrir el modal para fijar el límite de pago."""
         self.payment_amount = pending
         self.max_payment = pending
         self.is_payment_invalid = False
@@ -159,9 +151,6 @@ class POSView(rx.State):
 
     @rx.event
     def set_reverse_context(self, order_id: int, total_paid: int):
-        """Prepara el modal de reverso."""
-        # Guardamos el total pagado como máximo (positivo),
-        # y el payment_amount inicial como su negativo:
         self.max_payment = total_paid
         self.payment_amount = -total_paid
         self.is_payment_invalid = False
@@ -194,12 +183,6 @@ class POSView(rx.State):
 
     @rx.event
     def validate_reverse(self, value: str):
-        """
-        Valida el monto a reversar:
-        - No puede estar vacío.
-        - Debe ser negativo.
-        - Su valor absoluto no puede superar el pagado (self.max_payment).
-        """
         text = (value or "").strip()
         if text == "":
             self.payment_amount = 0
@@ -210,13 +193,11 @@ class POSView(rx.State):
                 amt = int(text)
             except ValueError:
                 amt = 0
-            # 1) Chequeo de signo
             if amt >= 0:
                 self.is_payment_invalid = True
                 self.payment_error = "Monto a reversar debe ser negativo"
                 self.payment_amount = 0
             else:
-                # 2) Guardamos como negativo y validamos límite
                 self.payment_amount = amt
                 if abs(amt) > self.max_payment:
                     self.is_payment_invalid = True
@@ -228,14 +209,7 @@ class POSView(rx.State):
 
     @rx.event
     def validate_bill(self, value: str):
-        """
-        Valida el monto a gastar:
-        - No puede estar vacío.
-        - Debe ser negativo.
-        - Su valor absoluto no puede superar el monto final de la caja.
-        """
         text = (value or "").strip()
-        # vacío
         if text == "":
             self.payment_amount = 0
             self.is_payment_invalid = True
@@ -245,12 +219,10 @@ class POSView(rx.State):
                 amt = int(text)
             except ValueError:
                 amt = 0
-            # debe ser negativo
             if amt >= 0:
                 self.payment_amount = 0
                 self.is_payment_invalid = True
                 self.payment_error = "El monto gastado debe ser negativo"
-            # no puede superar el final_amount
             elif abs(amt) > (self.pos.final_amount if self.pos else 0):
                 self.payment_amount = amt
                 self.is_payment_invalid = True
@@ -292,12 +264,9 @@ class POSView(rx.State):
 
     @rx.event
     async def load_date(self):
-        # cargar fecha y estado de caja
         self.sys_date = get_sys_date_to_string_two()
         self.pos = POS_is_open(get_sys_date_two(self.sys_date))
         self.is_open = self.pos is not None
-
-        # cargar todos los pedidos
         orders = await select_all_order_service()
         self.pos_data = [
             {
@@ -309,12 +278,8 @@ class POSView(rx.State):
             }
             for o in orders
         ]
-
-        # resetear filtros
         self.pos_search = ""
         self.show_paid = False
-
-        # aplicar filtros iniciales
         self.apply_filters()
 
     @rx.var
@@ -366,9 +331,7 @@ class POSView(rx.State):
 
         new_total_paid = order["total_paid"] + amount
 
-        # 3) Intentar actualizar primero el pedido
         try:
-            # *** Antes de actualizar, insertamos la transacción ***
             create_transaction(
                 Transaction(
                     id=None,
@@ -377,7 +340,7 @@ class POSView(rx.State):
                     transaction_date=datetime.now(),
                     status="PAGO",
                     id_POS=self.pos.id,
-                    id_user=17,
+                    id_user=1221,
                     id_order=order_id,
                 )
             )
@@ -385,16 +348,20 @@ class POSView(rx.State):
         except Exception as e:
             print("Error al procesar pago/registro de transacción:", e)
             return
-
-        # 4) Actualizar el POS
         update_final_amount(
             self.pos.id,
             self.pos.initial_amount,
             self.pos.final_amount + amount,
             self.pos.pos_date,
         )
+        if new_total_paid >= order["total_order"]:
+            try:
+                fixed_products = get_fixed_products_by_order_id(order_id)
+                for po in fixed_products:
+                    await update_stock_with_pay_service(po.id_product, po.quantity)
 
-        # 5) Recargar la vista
+            except Exception as e:
+                print("Error al actualizar stock:", e)
         yield POSView.load_date()
 
     @rx.event
@@ -406,10 +373,8 @@ class POSView(rx.State):
             print(f"Pedido {order_id} no encontrado")
             return
 
-        new_total_paid = order["total_paid"] + amount  # Como amount es negativo. En este caso se suma
-
+        new_total_paid = order["total_paid"] + amount
         try:
-            # Inserta transacción de reverso
             create_transaction(
                 Transaction(
                     id=None,
@@ -422,29 +387,22 @@ class POSView(rx.State):
                     id_order=order_id,
                 )
             )
-            # Actualiza el pedido con el nuevo total_paid
             update_pay_amount_service(Order(id=order_id, total_paid=new_total_paid))
         except Exception as e:
             print("Error al procesar reverso:", e)
             return
-
-        # Ajusta la caja
         update_final_amount(
             self.pos.id,
             self.pos.initial_amount,
             self.pos.final_amount + amount,
             self.pos.pos_date,
         )
-
-        # Recarga
         yield POSView.load_date()
 
     @rx.event
     async def process_bill(self, form_data: dict):
-        # 1) Recogemos los datos del form
         amount = int(form_data.get("bill_amount", 0))
         observation = form_data.get("observation", "").strip()
-        # 2) Insertamos la transacción de tipo GASTO
         try:
             create_transaction(
                 Transaction(
@@ -455,10 +413,9 @@ class POSView(rx.State):
                     status="GASTO",
                     id_POS=self.pos.id,
                     id_user=1221,
-                    id_order=None,  # null
+                    id_order=None,
                 )
             )
-            # 3) Actualizamos el final_amount de la caja
             update_final_amount(
                 self.pos.id,
                 self.pos.initial_amount,
@@ -468,7 +425,6 @@ class POSView(rx.State):
         except Exception as e:
             print("Error al ingresar gasto:", e)
             return
-        # 4) Recargamos la vista
         yield POSView.load_date()
 
 def get_title() -> rx.Component:
@@ -486,7 +442,6 @@ def get_title() -> rx.Component:
 def create_pos_form() -> rx.Component:
     return rx.form(
         rx.vstack(
-            # Monto Inicial
             rx.grid(
                 rx.text("Monto Inicial:", color="white"),
                 rx.cond(
@@ -547,7 +502,6 @@ def create_pos_form() -> rx.Component:
                 gap="3",
                 width="100%",
             ),
-            # Estado de la caja
             rx.grid(
                 rx.text("Estado:", color="white"),
                 rx.select(
@@ -565,7 +519,6 @@ def create_pos_form() -> rx.Component:
                 gap="3",
                 width="100%",
             ),
-            # Fecha del sistema
             rx.grid(
                 rx.text("Fecha:", color="white"),
                 rx.input(
@@ -582,7 +535,6 @@ def create_pos_form() -> rx.Component:
                 width="100%",
             ),
             rx.divider(color="white"),
-            # Botón de cierre del modal
             rx.cond(
                 POSView.is_open,
                 rx.grid(
@@ -601,7 +553,6 @@ def create_pos_form() -> rx.Component:
                     gap="3",
                     width="100%",
                 ),
-                # Botón Guardar si está cerrada
                 rx.dialog.close(
                     rx.button(
                         rx.icon("save", size=22),
@@ -624,7 +575,6 @@ def create_pos_form() -> rx.Component:
 def create_bill_form() -> rx.Component:
     return rx.form(
         rx.vstack(
-            # Monto Inicial
             rx.grid(
                 rx.text("Monto Inicial:", color="white"),
                 rx.input(
@@ -658,7 +608,6 @@ def create_bill_form() -> rx.Component:
                 gap="3",
                 width="100%",
             ),
-            # Estado de la caja
             rx.grid(
                 rx.text("Estado:", color="white"),
                 rx.select(
@@ -675,7 +624,6 @@ def create_bill_form() -> rx.Component:
                 gap="3",
                 width="100%",
             ),
-            # Fecha del sistema
             rx.grid(
                 rx.text("Fecha:", color="white"),
                 rx.input(
@@ -714,7 +662,6 @@ def create_bill_form() -> rx.Component:
                 width="100%",
             ),
             rx.divider(color="white"),
-            # Botón de cierre del modal
             rx.grid(
                 rx.text("Ganancias del día:", color="white"),
                 rx.input(
@@ -746,7 +693,7 @@ def create_bill_form() -> rx.Component:
                 ),
                 rx.cond(
                     POSView.is_payment_invalid,
-                    rx.text(f"⚠️ {POSView.payment_error}", color="white"),
+                    rx.text(f"{POSView.payment_error}", color="white"),
                     rx.text(""),
                 ),
                 spacing="2",
@@ -796,7 +743,6 @@ def open_bills_modal() -> rx.Component:
     return rx.cond(
         POSView.is_open,
         rx.dialog.root(
-            # 1) Trigger: el botón siempre existe dentro de dialog.root
             rx.dialog.trigger(
                 rx.button(
                     rx.text("Ingresar Gasto"),
@@ -805,7 +751,6 @@ def open_bills_modal() -> rx.Component:
                     variant="solid",
                 )
             ),
-            # 2) Content: lo que se mostrará en el modal
             rx.dialog.content(
                 rx.flex(
                     rx.dialog.title("Ingresar Gasto"),
@@ -821,21 +766,10 @@ def open_bills_modal() -> rx.Component:
         ),
     )
 
-def update_payment_form(
-    order_id: int,
-    total_paid: int,
-    pending: int,
-    total_order: int,
-) -> rx.Component:
-    """
-    Formulario de pago: recibe sólo literales para no capturar 'order'.
-    """
+def update_payment_form(order_id: int, total_paid: int, pending: int, total_order: int) -> rx.Component:
     return rx.form(
         rx.vstack(
-            # Campo oculto con el order_id
             rx.input(name="order_id", type="hidden", default_value=order_id),
-
-            # Grid de pares Label / Input
             rx.grid(
                 rx.text("Pagado:", color="white"),
                 rx.input(
@@ -881,10 +815,7 @@ def update_payment_form(
                 gap="3",
                 width="100%",
             ),
-
             rx.divider(color="white"),
-
-            # Botón Guardar + mensaje de error, el botón dispara el submit
             rx.hstack(
                 rx.dialog.close(
                     rx.button(
@@ -898,29 +829,22 @@ def update_payment_form(
                 ),
                 rx.cond(
                     POSView.is_payment_invalid,
-                    rx.text(f"⚠️ {POSView.payment_error}", color="white"),
+                    rx.text(f"{POSView.payment_error}", color="white"),
                     rx.text(""),
                 ),
                 spacing="2",
             ),
         ),
-        on_submit=POSView.process_payment,  # ahora el formulario envía form_data
+        on_submit=POSView.process_payment,
         style={"width": "100%", "gap": "3", "padding": "3"},
         align="center",
         justify="center",
     )
 
-def update_reverse_form(
-    order_id: int,
-    total_paid: int,
-    pending: int,
-    total_order: int,
-) -> rx.Component:
+def update_reverse_form(order_id: int, total_paid: int, pending: int, total_order: int) -> rx.Component:
     return rx.form(
         rx.vstack(
-            # Campo oculto con el order_id
             rx.input(name="order_id", type="hidden", default_value=order_id),
-            # Grid de pares Label / Input
             rx.grid(
                 rx.text("Pagado:", color="white"),
                 rx.input(
@@ -956,7 +880,6 @@ def update_reverse_form(
                 rx.input(
                     name="reverse_amount",
                     type="number",
-                    # Usamos `value` atado al state para precargar -total_paid
                     value=POSView.payment_amount,
                     on_change=POSView.validate_reverse,
                     background_color="#5D4037",
@@ -968,7 +891,6 @@ def update_reverse_form(
                 width="100%",
             ),
             rx.divider(color="white"),
-            # Botón Guardar (reverso) + mensaje de error
             rx.hstack(
                 rx.dialog.close(
                     rx.button(
@@ -982,7 +904,7 @@ def update_reverse_form(
                 ),
                 rx.cond(
                     POSView.is_payment_invalid,
-                    rx.text(f"⚠️ {POSView.payment_error}", color="white"),
+                    rx.text(f"{POSView.payment_error}", color="white"),
                     rx.text(""),
                 ),
                 spacing="2",
@@ -994,13 +916,7 @@ def update_reverse_form(
         justify="center",
     )
 
-def payment_dialog_component(
-    order_id: int,
-    total_paid: int,
-    pending: int,
-    total_order: int,
-) -> rx.Component:
-    # Desplegamos el botón que abre el dialog
+def payment_dialog_component(order_id: int, total_paid: int, pending: int, total_order: int) -> rx.Component:
     return rx.dialog.root(
         rx.dialog.trigger(
             rx.button(
@@ -1012,7 +928,6 @@ def payment_dialog_component(
                 on_click=POSView.set_payment_context(pending),
             )
         ),
-        # Contenido del dialog
         rx.dialog.content(
             rx.flex(
                 rx.dialog.title("Realizar pago"),
@@ -1027,12 +942,7 @@ def payment_dialog_component(
         style={"width": "300px"},
     )
 
-def reverse_dialog_component(
-    order_id: int,
-    total_paid: int,
-    pending: int,
-    total_order: int,
-) -> rx.Component:
+def reverse_dialog_component(order_id: int, total_paid: int, pending: int, total_order: int) -> rx.Component:
     return rx.dialog.root(
         rx.dialog.trigger(
             rx.button(
@@ -1062,15 +972,11 @@ def reverse_dialog_component(
 def pos_page() -> rx.Component:
     return rx.box(
         rx.vstack(
-            # 1) Título
             get_title(),
-
-            # 2) Fila de controles: buscador | botón Ver/Abrir Caja | checkbox
             rx.hstack(
                 rx.cond(
                     POSView.is_open,
                     rx.hstack(
-                        # Input de búsqueda
                         rx.input(
                             placeholder="Buscar Pedido",
                             value=POSView.pos_search,
@@ -1079,11 +985,8 @@ def pos_page() -> rx.Component:
                             color="white",
                             width="200px",
                         ),
-                        #Botón para ingresar gastos
                         open_bills_modal(),
-                        # Botón Ver/Abrir Caja
                         open_pos_modal(),
-                        # Checkbox “Ver Pagados”
                         rx.hstack(
                             rx.checkbox(
                                 checked=POSView.show_paid,
@@ -1096,20 +999,13 @@ def pos_page() -> rx.Component:
                         spacing="4",
                         align="center",
                     ),
-                    # Si no está abierta, solo el botón para abrirla
                     open_pos_modal(),
                 ),
                 justify="center",
                 align="center",
             ),
-
-            # 3) Separador
             rx.divider(color_scheme="brown"),
-
-            # 4) Modal de detalle de órdenes (una sola vez)
             view_order_modal(),
-
-            # 5) Tabla + paginación (solo si la caja está abierta)
             rx.cond(
                 POSView.is_open,
                 rx.vstack(
@@ -1164,7 +1060,6 @@ def pos_page() -> rx.Component:
             spacing="5",
             align="center",
         ),
-        # Estilos del contenedor principal
         display="flex",
         justify_content="center",
         align_items="flex-start",

@@ -1,6 +1,8 @@
+from sqlalchemy import and_
 from ..models.ProductOrderModel import ProductOrder
+from ..models.ProductModel import Product, ProductType
 from .ConnectDB import connect
-from sqlmodel import Session, select
+from sqlmodel import Session, or_, select
 
 
 def select_all():
@@ -14,6 +16,21 @@ def select_by_order_id(id_order: int):
     with Session(engine) as session:
         query = select(ProductOrder).where(ProductOrder.id_order == id_order)
         return session.exec(query).all()
+    
+def select_fixed_products(id_order: int):
+    engine = connect()
+    with Session(engine) as session:
+        stmt = (
+            select(ProductOrder)
+            .join(Product)
+            .where(
+                and_(
+                    ProductOrder.id_order == id_order,
+                    Product.product_type == ProductType.IN_STOCK.name
+                )
+            )
+        )
+        return session.exec(stmt).all()
 
 def insert_product_order(product_order: ProductOrder) -> ProductOrder:
     engine = connect()

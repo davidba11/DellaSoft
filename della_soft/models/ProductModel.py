@@ -1,37 +1,39 @@
 import reflex as rx
 from sqlmodel import Field, Relationship
-from sqlalchemy.orm import relationship
 from typing import List, Optional, TYPE_CHECKING
 from enum import Enum
-from decimal import Decimal
-from sqlalchemy import Numeric   # ← para usar Decimal de forma correcta
+from sqlalchemy import Column, Enum as SAEnum
 
 if TYPE_CHECKING:
     from .ProductStockModel import ProductStock
     from .ProductOrderModel import ProductOrder
     from .RecipeModel import Recipe
 
-
 class ProductType(str, Enum):
-    IN_STOCK = "Precio Fijo"      # se vende desde stock
-    ON_DEMAND = "Precio Por Kilo" # se produce a pedido
-
+    IN_STOCK = "Precio Fijo"
+    ON_DEMAND = "Precio Por Kilo"
 
 class Product(rx.Model, table=True):
     __tablename__ = "product"
 
-    id: int = Field(primary_key=True, default=None)
+    id: int = Field(default=None, primary_key=True)
     name: str = Field(nullable=False, unique=True)
-    description: str | None = Field(default=None)
-    product_type: ProductType = Field(nullable=False)
-    price: int = Field(nullable=False)
-    #id_recipe: Optional[int] = Field(foreign_key="recipe.id", nullable=True)
+    description: Optional[str] = Field(default=None)
+    product_type: ProductType = Field(
+        sa_column=Column(
+            SAEnum(
+                ProductType,
+                values_callable=lambda enum_cls: [e.name for e in enum_cls],
+                name="producttype",
+            ),
+            nullable=False,
+        )
+    )
 
-    
+    price: int = Field(nullable=False)
 
     stock_rows: Optional[List["ProductStock"]] = Relationship(
-        back_populates="product",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+        back_populates="product"
     )
 
     product_detail: Optional[List["ProductOrder"]] = Relationship(

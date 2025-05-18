@@ -5,7 +5,6 @@ from typing import List, Optional, TYPE_CHECKING
 if TYPE_CHECKING:
     from .IngredientModel import Ingredient
 
-
 class Measure(rx.Model, table=True):
     __tablename__ = "measure"
 

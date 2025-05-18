@@ -14,11 +14,9 @@ if TYPE_CHECKING:
     from .OrderModel import Order
 
 class Transaction(rx.Model, table=True):
-
-    #Como la clase no se llama igual al archivo que la contiene, se agrega __tablename__
     __tablename__ = "transaction"
 
-    id: int = Field(default=None, primary_key=True, nullable=False) #Se declara como PK
+    id: int = Field(default=None, primary_key=True, nullable=False)
     observation: str = Field(nullable=True)
     amount: int = Field(nullable=False)
     transaction_date: datetime | None = Field(default=None, nullable=False)
@@ -28,16 +26,13 @@ class Transaction(rx.Model, table=True):
     id_order: int = Field(foreign_key="order.id", nullable=True)
 
     pos: "POS" = Relationship(
-        #Se declara como se llama la relación del otro lado (Debe ser igual a la otra clase)
         back_populates="transactions"
     )
 
     customer: "Customer" = Relationship(
-        #Se declara como se llama la relación del otro lado (Debe ser igual a la otra clase)
         back_populates="transactions"
     )
 
     order: Optional["Order"] = Relationship(
-        #Se declara como se llama la relación del otro lado (Debe ser igual a la otra clase)
         back_populates="transactions"
     )
