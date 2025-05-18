@@ -2,6 +2,7 @@ import reflex as rx
 from typing import List, Dict, Optional
 
 from della_soft.repositories.LoginRepository import AuthState
+from della_soft.repositories.ProductRepository import get_product
 
 from .ProductView import ProductView, get_table_header as product_table_header
 from ..services.ProductService import select_all_product_service
@@ -38,6 +39,7 @@ class RecipeView(ProductView):
     view_product_name: str = ""
     view_description: str = ""
     _view_ingredient_rows: list = []
+    recipe_input_search: str = ""
 
     # -------------------------- Vars reactivas --------------------------------
     @rx.var
@@ -292,9 +294,16 @@ class RecipeView(ProductView):
             return
         await self.open_view_modal(prod)
 
-# =============================================================================
-# UI HELPERS ------------------------------------------------------------------
-# =============================================================================
+    async def get_product(self):
+        self.data = await get_product(self.recipe_input_search)
+        self.total_items = len(self.data) 
+        self.offset = 0 
+        self.data = self.data[self.offset : self.offset + self.limit]  
+        self.set()
+    
+    async def load_product_information(self, value: str):
+        self.recipe_input_search = value
+        await self.get_product()
 
 def ingredient_row_component(idx: int):
     return rx.hstack(
@@ -418,12 +427,21 @@ def view_recipe_modal():
         on_open_change=RecipeView.set_view_modal_open_flag,
     )
 
+def search_product_component () ->rx.Component:
+    return rx.hstack(
+        rx.input(
+            placeholder='Buscar Producto',
+            background_color="#3E2723", 
+            placeholder_color="white", 
+            color="white",
+            on_change=RecipeView.load_product_information,
+        ),
+    )
+
 def get_table_body(product: Product):
     return rx.table.row(
         rx.table.cell(product.name),
         rx.table.cell(product.description),
-        rx.table.cell(product.product_type),
-        rx.table.cell(product.price),
         rx.table.cell(
     rx.cond(
         AuthState.is_admin,
@@ -464,6 +482,7 @@ def recipes() -> rx.Component:
             rx.text("Recetas de Productos", size="7", weight="bold", color="#3E2723"),
             create_recipe_modal(),
             view_recipe_modal(),
+            search_product_component(),
             rx.table.root(
                 rx.table.header(product_table_header()),
                 rx.table.body(rx.foreach(RecipeView.data, get_table_body)),
