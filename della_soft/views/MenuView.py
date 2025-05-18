@@ -12,6 +12,7 @@ from .POSView import POSView, pos_page
 from .IngredientView import IngredientView, ingredients
 from .RecipeView import RecipeView, recipes
 from .StockView import StockView, stock
+from .TransactionView import TransactionView, transactions  # <-- NUEVO IMPORT
 
 from typing import TYPE_CHECKING
 
@@ -47,6 +48,8 @@ class MenuView(rx.State):
         if screen == "stock_view":
             yield StockView.load_stock()
             pass
+        if screen == "transactions_view":
+            yield TransactionView.load_transactions()  # <-- CARGA INICIAL DE TRANSACCIONES
         if screen == "logout":
             yield AuthState.logout()
         self.screen = screen
@@ -81,9 +84,9 @@ def menu_icon(icon_name: str, label: str, on_click=None) -> rx.Component:
             size=40,
             on_click=on_click,
         ),
-        content=label,      # <-- texto que se ve al hacer hover
-        side="right",       # top | bottom | left | right
-        side_offset=8,      # separación opcional respecto al icono
+        content=label,
+        side="right",
+        side_offset=8,
     )
 
 def get_menu():
@@ -96,6 +99,7 @@ def get_menu():
                 menu_icon("user", "Clientes", on_click=lambda: MenuView.display_screen("customers_view")),
                 menu_icon("cake", "Productos", on_click=lambda: MenuView.display_screen("products_view")),
                 menu_icon("circle-dollar-sign", "Caja", on_click=lambda: MenuView.display_screen("pos_view")),
+                menu_icon("banknote", "Transacciones", on_click=lambda: MenuView.display_screen("transactions_view")), # <-- NUEVA OPCIÓN
                 menu_icon("cherry", "Ingredientes", on_click=lambda: MenuView.display_screen("ingredients_view")),
                 menu_icon("book-open-text", "Recetas", on_click=lambda: MenuView.display_screen("recipes_view")),
                 menu_icon("list-checks", "Stock", on_click=lambda: MenuView.display_screen("stock_view")),
@@ -123,21 +127,24 @@ def menu() -> rx.Component:
             rx.cond(
                 MenuView.screen == "login",
                 login_page(),
-                    rx.cond(
-                        AuthState.is_logged_in,
-                        rx.box(
+                rx.cond(
+                    AuthState.is_logged_in,
+                    rx.box(
+                        rx.cond(
+                            MenuView.screen == "products_view",
+                            products(),
                             rx.cond(
-                                MenuView.screen == "products_view",
-                                products(),
+                                MenuView.screen == "customers_view",
+                                customers(),
                                 rx.cond(
-                                    MenuView.screen == "customers_view",
-                                    customers(),
+                                    MenuView.screen == "users_view",
+                                    users(),
                                     rx.cond(
-                                        MenuView.screen == "users_view",
-                                        users(),
+                                        MenuView.screen == "pos_view",
+                                        pos_page(),
                                         rx.cond(
-                                            MenuView.screen == "pos_view",
-                                            pos_page(),
+                                            MenuView.screen == "transactions_view",
+                                            transactions(),   # <-- NUEVA VISTA
                                             rx.cond(
                                                 MenuView.screen == "ingredients_view",
                                                 ingredients(),
@@ -155,14 +162,15 @@ def menu() -> rx.Component:
                                     ),
                                 ),
                             ),
-                            width="100%",
-                            height="calc(100vh - 5em)",
-                            padding="2em",
-                            overflow="auto"
                         ),
-                        rx.text("Por favor inicie sesión para continuar.")
+                        width="100%",
+                        height="calc(100vh - 5em)",
+                        padding="2em",
+                        overflow="auto"
                     ),
+                    rx.text("Por favor inicie sesión para continuar.")
                 ),
+            ),
             width="100%",
             height="100vh",
             overflow="hidden"
