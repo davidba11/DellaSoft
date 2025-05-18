@@ -13,7 +13,7 @@ from ..services.POSService import POS_is_open, insert_pos_register, update_final
 from ..services.OrderService import select_all_order_service, update_pay_amount_service
 from ..services.CustomerService import select_name_by_id
 from ..services.ProductOrderService import get_fixed_products_by_order_id
-from ..services.ProductStockService import update_stock_with_pay_service, get_stock_by_product_service
+from ..services.ProductStockService import update_stock_with_pay_service, get_stock_by_product_service, update_stock_with_reverse_service
 from ..models.POSModel import POS
 from ..models.OrderModel import Order
 from ..services.TransactionService import create_transaction
@@ -74,10 +74,13 @@ def render_row(item: dict) -> rx.Component:
                     ),
                 ),
                 rx.cond(
-                    total_paid != 0,
-                    reverse_dialog_component(
-                        order_id, total_paid, pending, total_order
+                    AuthState.is_admin,
+                    rx.cond(
+                        total_paid != 0,
+                        reverse_dialog_component(order_id, total_paid, pending, total_order),
+                        None,
                     ),
+                    None,
                 ),
                 spacing="2",
             )
@@ -392,11 +395,13 @@ class POSView(rx.State):
     async def process_reverse(self, form_data: dict):
         order_id = int(form_data.get("order_id", 0))
         amount   = int(form_data.get("reverse_amount", 0))
-        auth = await self.get_state(AuthState)
+
+        auth    = await self.get_state(AuthState)
         user_id = auth.current_user_id
         if user_id is None:
             yield rx.toast("Sesión expirada. Vuelve a iniciar sesión")
             return
+
         order = next((o for o in self.pos_data if o["id"] == order_id), None)
         if not order:
             print(f"Pedido {order_id} no encontrado")
@@ -420,13 +425,24 @@ class POSView(rx.State):
         except Exception as e:
             print("Error al procesar reverso:", e)
             return
+
         update_final_amount(
             self.pos.id,
             self.pos.initial_amount,
             self.pos.final_amount + amount,
             self.pos.pos_date,
         )
+
+        if order["total_paid"] == order["total_order"] and new_total_paid < order["total_order"]:
+            try:
+                fixed_products = get_fixed_products_by_order_id(order_id)
+                for po in fixed_products:
+                    await update_stock_with_reverse_service(po.id_product, po.quantity)
+            except Exception as e:
+                print("Error al revertir stock:", e)
+
         yield POSView.load_date()
+
 
     @rx.event
     async def process_bill(self, form_data: dict):
@@ -753,7 +769,7 @@ def open_pos_modal() -> rx.Component:
                 background_color="#3E2723",
                 size="2",
                 variant="solid",
-            )
+            ),
         ),
         rx.dialog.content(
             rx.flex(
@@ -1020,7 +1036,11 @@ def pos_page() -> rx.Component:
                             width="200px",
                         ),
                         open_bills_modal(),
-                        open_pos_modal(),
+                        rx.cond(
+                            AuthState.is_admin,
+                            open_pos_modal(),
+                            None,
+                        ),
                         rx.hstack(
                             rx.checkbox(
                                 checked=POSView.show_paid,
@@ -1033,7 +1053,11 @@ def pos_page() -> rx.Component:
                         spacing="4",
                         align="center",
                     ),
-                    open_pos_modal(),
+                    rx.cond(
+                        AuthState.is_admin,
+                        open_pos_modal(),
+                        None,
+                    ),
                 ),
                 justify="center",
                 align="center",

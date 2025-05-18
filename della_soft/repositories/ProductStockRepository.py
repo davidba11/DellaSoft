@@ -52,3 +52,17 @@ def update_stock_with_pay(product_id: int, quantity: int) -> ProductStock:
         session.commit()
         session.refresh(stock_row)
         return stock_row
+    
+def update_stock_with_reverse(product_id: int, quantity: int) -> ProductStock:
+    engine = connect()
+    with Session(engine) as session:
+        stock_row = session.exec(
+            select(ProductStock).where(ProductStock.product_id == product_id)
+        ).first()
+        if stock_row is None:
+            raise ValueError(f"Stock no encontrado para product_id={product_id}")
+        stock_row.quantity += quantity
+        session.add(stock_row)
+        session.commit()
+        session.refresh(stock_row)
+        return stock_row

@@ -17,6 +17,7 @@ from ..services.ProductStockService    import (
 )
 from ..models.ProductModel             import ProductType
 from ..services.MeasureService         import select_name_by_id
+from ..repositories.LoginRepository import AuthState
 
 
 # ╔═══════════════════════════════════════════════════════════════════════╗
@@ -390,10 +391,13 @@ def create_stock_form():
             ),
             rx.grid(
                 rx.text("Cantidad Mínima:", color="white"),
-                rx.input(type="number", name="min_quantity",
-                         value=StockView.min_quantity,
-                         on_change=StockView.change_min_quantity,
-                         background_color="#3E2723", color="white"),
+                rx.input(type="number",
+                    name="min_quantity",
+                    value=StockView.min_quantity,
+                    on_change=StockView.change_min_quantity,
+                    background_color="#3E2723",
+                    color="white"
+                ),
                 columns="1fr 2fr", gap="3", width="100%",
             ),
             rx.divider(color="white"),
@@ -455,10 +459,29 @@ def edit_stock_form():
             ),
             rx.grid(
                 rx.text("Cantidad Mínima:", color="white"),
-                rx.input(type="number", name="min_quantity",
-                         value=StockView.edit_min_quantity,
-                         on_change=StockView.change_edit_min_quantity,
-                         background_color="#3E2723", color="white"),
+                rx.cond(
+                    AuthState.is_admin,
+                    rx.input(
+                        type="number",
+                        name="min_quantity",
+                        value=StockView.edit_min_quantity,
+                        on_change=StockView.change_edit_min_quantity,
+                        background_color="#3E2723",
+                        color="white",
+                        read_only=False,
+                        is_disabled=False,
+                    ),
+                    rx.input(
+                        type="number",
+                        name="min_quantity",
+                        value=StockView.edit_min_quantity,
+                        on_change=StockView.change_edit_min_quantity,
+                        background_color="#3E2723",
+                        color="white",
+                        read_only=True,
+                        is_disabled=True,
+                    ),
+                ),
                 columns="1fr 2fr", gap="3", width="100%",
             ),
             rx.divider(color="white"),
@@ -559,7 +582,13 @@ def pagination_controls():
 # ─── main actions bar (incluye modal edición oculto) ───────────────────
 def main_actions_bar():
     return rx.hstack(
-        search_stock_component(), create_stock_modal(), edit_stock_modal(),
+        search_stock_component(),
+        rx.cond(
+            AuthState.is_admin,
+            create_stock_modal(),
+            None,
+        ),
+        edit_stock_modal(),
         justify="center", gap="3", width="80vw",
     )
 
