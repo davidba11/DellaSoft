@@ -55,7 +55,7 @@ def generate_invoice_pdf(order_id: int) -> str:
 
         customer_first_name = customer.first_name
         customer_last_name  = customer.last_name
-        customer_ci_div     = f"{customer.ci}{"" if customer.div==None else "-"+customer.div}"
+        customer_ci_div     = f"{customer.ci}{"" if customer.div==None else "-"+str(customer.div)}"
         fecha_emision       = datetime.today().strftime("%d/%m/%Y")
 
     pdf = FPDF()

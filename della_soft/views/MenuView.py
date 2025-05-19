@@ -49,7 +49,8 @@ class MenuView(rx.State):
             yield StockView.load_stock()
             pass
         if screen == "transactions_view":
-            yield TransactionView.load_transactions()  # <-- CARGA INICIAL DE TRANSACCIONES
+            yield TransactionView.reset_filters_today()
+            yield TransactionView.load_transactions()
         if screen == "logout":
             yield AuthState.logout()
         self.screen = screen
