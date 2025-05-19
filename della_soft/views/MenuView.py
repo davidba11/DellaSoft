@@ -100,7 +100,11 @@ def get_menu():
                 menu_icon("user", "Clientes", on_click=lambda: MenuView.display_screen("customers_view")),
                 menu_icon("cake", "Productos", on_click=lambda: MenuView.display_screen("products_view")),
                 menu_icon("circle-dollar-sign", "Caja", on_click=lambda: MenuView.display_screen("pos_view")),
-                menu_icon("banknote", "Transacciones", on_click=lambda: MenuView.display_screen("transactions_view")), # <-- NUEVA OPCIÓN
+                rx.cond(
+                    AuthState.is_admin,
+                    menu_icon("banknote", "Transacciones", on_click=lambda: MenuView.display_screen("transactions_view")),
+                    None
+                ),
                 menu_icon("cherry", "Ingredientes", on_click=lambda: MenuView.display_screen("ingredients_view")),
                 menu_icon("book-open-text", "Recetas", on_click=lambda: MenuView.display_screen("recipes_view")),
                 menu_icon("list-checks", "Stock", on_click=lambda: MenuView.display_screen("stock_view")),
