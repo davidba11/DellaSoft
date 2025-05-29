@@ -12,3 +12,4 @@ from .IngredientModel import Ingredient
 from .MeasureModel import Measure
 from .RecipeDetailModel import RecipeDetail
 from .RecipeModel import Recipe
+from .StampedModel   import Stamped 
