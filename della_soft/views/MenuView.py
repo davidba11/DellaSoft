@@ -12,8 +12,8 @@ from .POSView import POSView, pos_page
 from .IngredientView import IngredientView, ingredients
 from .RecipeView import RecipeView, recipes
 from .StockView import StockView, stock
-from .TransactionView import TransactionView, transactions  # <-- NUEVO IMPORT
-
+from .TransactionView import TransactionView, transactions 
+from .DashboardView import DashboardView, DashboardState
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -51,6 +51,9 @@ class MenuView(rx.State):
         if screen == "transactions_view":
             yield TransactionView.reset_filters_today()
             yield TransactionView.load_transactions()
+        if screen == "reports_view":
+            yield DashboardState.load_dashboard_data()
+            
         if screen == "logout":
             yield AuthState.logout()
         self.screen = screen
@@ -105,6 +108,11 @@ def get_menu():
                     menu_icon("banknote", "Transacciones", on_click=lambda: MenuView.display_screen("transactions_view")),
                     None
                 ),
+                rx.cond(
+                    AuthState.is_admin,
+                    menu_icon("bar-chart", "Dashboard",  on_click=lambda: MenuView.display_screen("reports_view")),
+                    None
+                ),
                 menu_icon("cherry", "Ingredientes", on_click=lambda: MenuView.display_screen("ingredients_view")),
                 menu_icon("book-open-text", "Recetas", on_click=lambda: MenuView.display_screen("recipes_view")),
                 menu_icon("list-checks", "Stock", on_click=lambda: MenuView.display_screen("stock_view")),
@@ -136,38 +144,42 @@ def menu() -> rx.Component:
                     AuthState.is_logged_in,
                     rx.box(
                         rx.cond(
-                            MenuView.screen == "products_view",
-                            products(),
+                MenuView.screen == "products_view",
+                products(),
+                rx.cond(
+                    MenuView.screen == "customers_view",
+                    customers(),
+                    rx.cond(
+                        MenuView.screen == "users_view",
+                        users(),
+                        rx.cond(
+                            MenuView.screen == "pos_view",
+                            pos_page(),
                             rx.cond(
-                                MenuView.screen == "customers_view",
-                                customers(),
+                                MenuView.screen == "transactions_view",
+                                transactions(),
                                 rx.cond(
-                                    MenuView.screen == "users_view",
-                                    users(),
+                                    MenuView.screen == "ingredients_view",
+                                    ingredients(),
                                     rx.cond(
-                                        MenuView.screen == "pos_view",
-                                        pos_page(),
+                                        MenuView.screen == "recipes_view",
+                                        recipes(),
                                         rx.cond(
-                                            MenuView.screen == "transactions_view",
-                                            transactions(),   # <-- NUEVA VISTA
+                                            MenuView.screen == "stock_view",
+                                            stock(),
                                             rx.cond(
-                                                MenuView.screen == "ingredients_view",
-                                                ingredients(),
-                                                rx.cond(
-                                                    MenuView.screen == "recipes_view",
-                                                    recipes(),
-                                                    rx.cond(
-                                                        MenuView.screen == "stock_view",
-                                                        stock(),
-                                                        orders()
-                                                    ),
-                                                ),
-                                            ),
-                                        ),
-                                    ),
-                                ),
-                            ),
-                        ),
+                                                MenuView.screen == "reports_view",
+                                                DashboardView(),
+                                                orders()  # Default fallback si ninguna coincide
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            ),
                         width="100%",
                         height="calc(100vh - 5em)",
                         padding="2em",

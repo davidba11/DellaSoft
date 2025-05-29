@@ -72,7 +72,7 @@ def generate_invoice_pdf(order_id: int) -> str:
 
     pdf.cell(0, 6, "RUC: 1005125-2", ln=True)
     pdf.cell(0, 6, f"Factura N: {numero_factura}", ln=True)
-    pdf.cell(0, 6, "Timbre N: 17376604", ln=True)
+    pdf.cell(0, 6, "Timbrado N: 17376604", ln=True)
     pdf.cell(0, 6, "Autorizado por Resolucion General N 90/2024", ln=True)
     pdf.cell(0, 6, f"Fecha de Emision: {fecha_emision}", ln=True)
     pdf.cell(0, 6, "Condicion de Venta: CONTADO", ln=True)

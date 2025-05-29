@@ -49,16 +49,16 @@ class TransactionView(rx.State):
     def next_page(self):
         if self.offset + self.limit < self.total_items:
             self.offset += self.limit
-            yield self._refresh_page()
+            yield self.refresh_page()
 
     @rx.event
     def prev_page(self):
         if self.offset > 0:
             self.offset -= self.limit
-            yield self._refresh_page()
+            yield self.refresh_page()
 
     @rx.event
-    def _refresh_page(self):
+    def refresh_page(self):
         """Mueve solo la ventana visible; no vuelve a consultar la BD."""
         self.transactions = self._all_rows[self.offset : self.offset + self.limit]
         self.set()
@@ -133,7 +133,7 @@ class TransactionView(rx.State):
         # paginación
         self.total_items = len(all_rows)
         self.offset = 0  # reinicia a la primera página
-        yield self._refresh_page()
+        yield self.refresh_page()
 
 
 # ╭──────────────────────────────────────────────────────────────────────────────╮

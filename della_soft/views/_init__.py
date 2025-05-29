@@ -9,3 +9,6 @@ from .POSView import  POSView
 from .IngredientView import  IngredientView
 from .RecipeView import  RecipeView
 from .StockView import  StockView
+from .TransactionView import TransactionView
+from .DashboardView import DashboardView
+from .ReportPDF import generate_stock_rotation_pdf, generate_top_products_pdf, generate_orders_per_day_pdf

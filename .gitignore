@@ -1,3 +1,4 @@
+.states
 # Bases de datos SQLite u otros ficheros *.db
 *.db
 
@@ -12,8 +13,9 @@ __pycache__/
 
 # Archivos o carpetas generadas por tu app
 public/facturas/
+public/reports/
 assets/external/
-
+assests/
 # Migraciones de Alembic (si prefieres no versionarlas)
 alembic/
 
