@@ -2,7 +2,7 @@ import asyncio
 
 from ..repositories.MeasureRepository import select_all, select_by_id
 
-async def select_all_measure_service():
+def select_all_measure_service():
     measures = select_all()
     return measures
 

@@ -2,7 +2,7 @@ import asyncio
 from ..repositories.ProductRepository import select_all, delete_product, get_product, insert_product, update_product
 from ..models.ProductModel import Product
 
-async def select_all_product_service():
+def select_all_product_service():
     products = select_all()
     return products
 

@@ -99,8 +99,8 @@ class RecipeView(ProductView):
 
     # Diccionario: {product_id: True} si tiene receta
     @rx.var
-    def product_has_recipe(self) -> dict:
-        return {pid: True for pid in self.recipe_map}
+    def product_has_recipe(self) -> dict[int, bool]:
+        return dict.fromkeys(self.recipe_map, True)
 
     # -------------------------- Eventos simples -------------------------------
     @rx.event

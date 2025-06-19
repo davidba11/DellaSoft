@@ -40,7 +40,7 @@ class AuthState(rx.State):
                 self.current_user_id = user.id
                 self.error = ""
                 self.current_id_rol = user.id_rol
-                print(f"user.id: "+str(user.id))
+                print("user.id: " + str(user.id))
                 yield MenuView.MenuView.display_screen("orders_view")
             else:
                 self.error = "Usuario o contraseña incorrectos"
@@ -109,8 +109,8 @@ class AuthState(rx.State):
             return
 
         try:
-            import random
-            new_id = random.randint(1000, 9999)
+            import secrets
+            new_id = secrets.randbelow(9000) + 1000
 
             create_user_service(
                 id=new_id,

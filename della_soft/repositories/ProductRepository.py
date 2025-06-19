@@ -17,7 +17,7 @@ def insert_product(product: Product):
         return session.exec(query).all()
     
 
-async def get_product(value: str):
+def get_product(value: str):
     engine = connect()
     with Session(engine) as session:
         query = select(Product).where(
@@ -54,7 +54,6 @@ def delete_product(id: int):
     engine = connect()
     with Session(engine) as session:
         query = select(Product).where(Product.id == id)
-        customer = session.exec(query).first()
         user_delete = session.exec(query).one()
         session.delete(user_delete)
         session.commit()

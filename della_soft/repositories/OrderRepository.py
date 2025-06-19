@@ -5,7 +5,7 @@ from sqlmodel import Session, String, or_, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 
-async def select_all():
+def select_all():
     engine = connect()
     with Session(engine) as session:
         query = select(Order)
@@ -17,7 +17,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from ..models.OrderModel import Order
 from ..models.CustomerModel import Customer
 
-async def get_order(value: str):
+def get_order(value: str):
     engine = connect()
     with Session(engine) as session:  # Usar sesión síncrona
         query = (

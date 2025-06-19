@@ -109,7 +109,6 @@ def delete_customer(id: int):
     engine = connect()
     with Session(engine) as session:
         query = select(Customer).where(Customer.id == id)
-        customer = session.exec(query).first()
         user_delete = session.exec(query).one()
         session.delete(user_delete)
         session.commit()
@@ -118,7 +117,6 @@ def delete_customer(id: int):
 def get_total_items():
     engine = connect()
     with Session(engine) as session:
-        query = select(func.count(Customer.id))  # Cuenta los registros de la tabla
         return session.exec(select(func.count(Customer.id))).one()
 
 def get_customer_section(offset: int, limit: int):
@@ -128,7 +126,7 @@ def get_customer_section(offset: int, limit: int):
         query = select(Customer).offset(offset).limit(limit)
         return session.exec(query).all()
     
-async def select_by_name(name: str) -> Customer:
+def select_by_name(name: str) -> Customer:
     engine = connect()
     with Session(engine) as session:
         query = select(Customer).where(

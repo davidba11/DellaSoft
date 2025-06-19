@@ -2,6 +2,9 @@
 import reflex as rx
 from typing import List
 
+import asyncio
+import aiofiles
+
 from della_soft.services.ProductService import select_all_product_service
 from della_soft.views.GenerateInvoicePDF import generate_invoice_pdf
 
@@ -20,6 +23,13 @@ from ..repositories.ProductRepository import get_product
 from .OrderDetailView import OrderDetailView, OrderDetails
 import os
 from ..models.OrderModel import Order
+
+CUSTOMER_LABER="Cliente:"
+OBSERVATION_LABEL="Observación:"
+TOTAL_ORDER_LABEL="Total Pedido:"
+TOTAL_PAID_LABEL="Total Pagado:"
+SYS_DATE_LABEL="Fecha de Ingreso:"
+DELIVERY_DATE_LABEL="Fecha de Entrega:"
 
 class OrderView(rx.State):
     # Tabla de pedidos
@@ -299,10 +309,11 @@ class OrderView(rx.State):
 
     @rx.event
     async def generate_invoice_pdf_event(self, order_id: int):
-        path = generate_invoice_pdf(order_id)
-        with open(path, "rb") as f:
-            pdf_bytes = f.read()
-        yield rx.download(data=pdf_bytes, filename=f"factura_{order_id}.pdf")
+        path = await asyncio.to_thread(generate_invoice_pdf, order_id)
+        async with aiofiles.open(path, "rb") as f:
+            pdf_bytes = await f.read()
+        yield rx.download(data=pdf_bytes,
+                          filename=f"factura_{order_id}.pdf")
         yield rx.toast("Factura generada con éxito")
 
     @rx.event
@@ -381,7 +392,7 @@ def create_order_form() -> rx.Component:
     return rx.form(
         rx.vstack(
             rx.grid(
-                rx.text("Cliente:"),
+                rx.text(CUSTOMER_LABER),
                 rx.vstack(
                     rx.box(
                         rx.input(
@@ -428,14 +439,14 @@ def create_order_form() -> rx.Component:
                         value=OrderView.selected_customer_label,
                     ),
                 ),
-                rx.text("Observación:"),
+                rx.text(OBSERVATION_LABEL),
                 rx.text_area(name="observation", background_color="#5D4037", color="white", rows="3"),
                 columns="1fr 2fr",
                 gap="3",
                 width="100%",
             ),
             rx.grid(
-                rx.text("Total Pedido:"),
+                rx.text(TOTAL_ORDER_LABEL),
                 rx.input(
                     name="total_order",
                     value=OrderDetailView.total,
@@ -443,14 +454,14 @@ def create_order_form() -> rx.Component:
                     background_color="#5D4037",
                     color="white",
                 ),
-                rx.text("Total Pagado:"),
+                rx.text(TOTAL_PAID_LABEL),
                 rx.input(name="total_paid", background_color="#5D4037", color="white", read_only=True,default_value="0"),
                 columns="1fr 2fr",
                 gap="3",
                 width="100%",
             ),
             rx.grid(
-                rx.text("Fecha de Ingreso:"),
+                rx.text(SYS_DATE_LABEL),
                 rx.input(
                     value=OrderView.sys_date,
                     name="order_date",
@@ -458,7 +469,7 @@ def create_order_form() -> rx.Component:
                     background_color="#5D4037",
                     color="white",
                 ),
-                rx.text("Fecha de Entrega:"),
+                rx.text(DELIVERY_DATE_LABEL),
                 rx.input(
                     name="delivery_date",
                     type="datetime-local",
@@ -495,14 +506,14 @@ def edit_order_form() -> rx.Component:
         rx.vstack(
             rx.input(name="id_customer", type="hidden", value=OrderView.modal_order.id_customer),
             rx.grid(
-                rx.text("Cliente:"),
+                rx.text(CUSTOMER_LABER),
                 rx.input(
                     value=OrderView.modal_customer_name,
                     read_only=True,
                     background_color="#5D4037",
                     color="white",
                 ),
-                rx.text("Observación:"),
+                rx.text(OBSERVATION_LABEL),
                 rx.text_area(
                     name="observation",
                     rows="3",
@@ -515,7 +526,7 @@ def edit_order_form() -> rx.Component:
                 width="100%",
             ),
             rx.grid(
-                rx.text("Total Pedido:"),
+                rx.text(TOTAL_ORDER_LABEL),
                 rx.input(
                     name="total_order",
                     value=OrderDetailView.total,
@@ -523,7 +534,7 @@ def edit_order_form() -> rx.Component:
                     background_color="#5D4037",
                     color="white",
                 ),
-                rx.text("Total Pagado:"),
+                rx.text(TOTAL_PAID_LABEL),
                 rx.input(
                     name="total_paid",
                     type="number",
@@ -537,7 +548,7 @@ def edit_order_form() -> rx.Component:
                 width="100%",
             ),
             rx.grid(
-                rx.text("Fecha de Ingreso:"),
+                rx.text(SYS_DATE_LABEL),
                 rx.input(
                     name="order_date",
                     value=OrderView.modal_order_date_str,
@@ -545,7 +556,7 @@ def edit_order_form() -> rx.Component:
                     background_color="#5D4037",
                     color="white",
                 ),
-                rx.text("Fecha de Entrega:"),
+                rx.text(DELIVERY_DATE_LABEL),
                 rx.input(
                     name="delivery_date",
                     type="datetime-local",
@@ -613,17 +624,17 @@ def view_order_modal() -> rx.Component:
             rx.vstack(
                 rx.text("Detalle del Pedido", size="5", weight="bold", color="#3E2723", text_align="center"),
                 rx.grid(
-                    rx.text("Cliente:", weight="bold", color="#3E2723"),
+                    rx.text(CUSTOMER_LABER, weight="bold", color="#3E2723"),
                     rx.text(OrderView.modal_customer_name, color="#3E2723"),
-                    rx.text("Observación:", weight="bold", color="#3E2723"),
+                    rx.text(OBSERVATION_LABEL, weight="bold", color="#3E2723"),
                     rx.text(OrderView.modal_observation_str, color="#3E2723"),
-                    rx.text("Total Pedido:", weight="bold", color="#3E2723"),
+                    rx.text(TOTAL_ORDER_LABEL, weight="bold", color="#3E2723"),
                     rx.text(OrderView.modal_total_order_str, color="#3E2723"),
-                    rx.text("Total Pagado:", weight="bold", color="#3E2723"),
+                    rx.text(TOTAL_PAID_LABEL, weight="bold", color="#3E2723"),
                     rx.text(OrderView.modal_total_paid_str, color= "#3E2723"),
-                    rx.text("Fecha de Ingreso:", weight="bold", color= "#3E2723"),
+                    rx.text(SYS_DATE_LABEL, weight="bold", color= "#3E2723"),
                     rx.text(OrderView.modal_order_date_str, color= "#3E2723"),
-                    rx.text("Fecha de Entrega:", weight="bold", color= "#3E2723"),
+                    rx.text(DELIVERY_DATE_LABEL, weight="bold", color= "#3E2723"),
                     rx.text(OrderView.modal_delivery_date_str, color="#3E2723"),
                     columns="repeat(2,1fr)",
                     gap="2",

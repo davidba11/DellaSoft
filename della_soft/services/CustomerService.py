@@ -2,22 +2,20 @@ from ..repositories.CustomerRepository import select_all, select_by_name, select
 from ..models.CustomerModel import Customer
 from ..services.SystemService import hash_password
 
-async def select_all_customer_service():
+def select_all_customer_service():
     customers = select_all()
-    #print (customers)
     return customers
 
-async def select_all_users_service():
+def select_all_users_service():
     customers = select_all_users()
-    #print (customers)
     return customers
 
-async def select_by_parameter_service(value: str):
+def select_by_parameter_service(value: str):
     if value.strip():  # Verifica que no esté vacío
         return select_by_parameter(value)  # Usa la nueva función que busca en nombre, apellido e ID
     return select_all()  # Si está vacío, devuelve todos los registros
 
-async def select_users_by_parameter_service(value: str):
+def select_users_by_parameter_service(value: str):
     if value.strip():  # Verifica que no esté vacío
         return select_users_by_parameter(value)  # Usa la nueva función que busca en nombre, apellido e ID
     return select_all_users()  # Si está vacío, devuelve todos los registros
