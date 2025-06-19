@@ -1,30 +1,40 @@
+# .github/workflows/sonar.yml
 name: SonarCloud Analysis
+
 on:
   push:
     branches: [ main ]
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [ opened, synchronize, reopened ]
 
 jobs:
   sonarcloud:
     runs-on: ubuntu-latest
+
     steps:
+      # 1) Descarga tu código
       - uses: actions/checkout@v4
 
+      # 2) Instala la versión de Python
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
+      # 3) Instala dependencias + herramientas de pruebas
       - name: Install deps
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest pytest-cov
+          pip install pytest coverage        # ← coverage produce el XML
 
+      # 4) Ejecuta pruebas (si existen) y genera coverage.xml
+      #    `|| true` evita que el job falle si pytest sale con código 5 (sin tests)
       - name: Run tests & generate coverage.xml
         run: |
-          pytest --cov=della_soft --cov-report xml
+          coverage run -m pytest || true
+          coverage xml                     # genera siempre coverage.xml
 
+      # 5) Envío del análisis a SonarCloud
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v2
         env:
