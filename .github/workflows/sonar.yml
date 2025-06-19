@@ -12,29 +12,31 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1) Descarga tu código
+      # 1) Checkout
       - uses: actions/checkout@v4
 
-      # 2) Instala la versión de Python
+      # 2) Python
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
-      # 3) Instala dependencias + herramientas de pruebas
+      # 3) Dependencias
       - name: Install deps
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest coverage        # ← coverage produce el XML
+          pip install pytest coverage
 
-      # 4) Ejecuta pruebas (si existen) y genera coverage.xml
-      #    `|| true` evita que el job falle si pytest sale con código 5 (sin tests)
+      # 4) Tests + cobertura
       - name: Run tests & generate coverage.xml
         run: |
+          # Ejecuta tests (si los hay). Si no existen, pytest devuelve exit-code 5,
+          # lo ignoramos con '|| true'
           coverage run -m pytest || true
-          coverage xml                     # genera siempre coverage.xml
+          # Genera siempre coverage.xml. -i ignora que no se hayan recogido datos
+          coverage xml -i
 
-      # 5) Envío del análisis a SonarCloud
+      # 5) Análisis SonarCloud
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v2
         env:
