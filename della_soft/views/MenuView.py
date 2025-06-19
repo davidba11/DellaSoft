@@ -4,8 +4,7 @@ from rxconfig import config
 
 from .ProductView import ProductView, products
 from .OrderView import OrderView, orders
-from .CustomerView import CustomerView, customers 
-#from .RegisterView import register_page
+from .CustomerView import CustomerView, customers
 from .UserView import UserView, users
 from .Login import login_page
 from .POSView import POSView, pos_page
@@ -13,7 +12,7 @@ from .IngredientView import IngredientView, ingredients
 from .RecipeView import RecipeView, recipes
 from .StockView import StockView, stock
 from .TransactionView import TransactionView, transactions 
-from .DashboardView import DashboardView, DashboardState
+from .DashboardView import dashboard_view, DashboardState
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -24,7 +23,7 @@ from ..repositories.LoginRepository import AuthState
 class MenuView(rx.State):
     screen: str = "login"
 
-    customer_id: int = ""
+    customer_id: int
 
     @rx.event
     def display_screen(self, screen: str):
@@ -42,12 +41,8 @@ class MenuView(rx.State):
             yield POSView.load_date()
         if screen == "ingredients_view":
             yield IngredientView.load_ingredients()
-        if screen == "recipes_view":
-            #yield RecipeView.load_recipes()
-            pass
         if screen == "stock_view":
             yield StockView.load_stock()
-            pass
         if screen == "transactions_view":
             yield TransactionView.reset_filters_today()
             yield TransactionView.load_transactions()
@@ -169,7 +164,7 @@ def menu() -> rx.Component:
                                             stock(),
                                             rx.cond(
                                                 MenuView.screen == "reports_view",
-                                                DashboardView(),
+                                                dashboard_view(),
                                                 orders()  # Default fallback si ninguna coincide
                                             )
                                         )

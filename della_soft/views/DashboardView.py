@@ -11,6 +11,9 @@ from .ReportPDF import (
     generate_orders_per_day_pdf,
 )
 
+MESSAGE_NOT_FOUND="No hay datos para mostrar."
+MESSAGE_DOWNLOAD="Descargar PDF"
+
 class DashboardState(rx.State):
     stock_rotation_data: list = []
     top_products_data: list = []
@@ -35,19 +38,19 @@ class DashboardState(rx.State):
                 f'Total de productos vendidos: {total_vendidos}.'
             )
         else:
-            self.resumen_stock = "No hay datos para mostrar."
+            self.resumen_stock = MESSAGE_NOT_FOUND
 
         if self.top_products_data:
             prod_top = self.top_products_data[0]
             self.resumen_top = f'Producto más vendido: {prod_top["Producto"]} ({prod_top["Cantidad Vendida"]} ventas).'
         else:
-            self.resumen_top = "No hay datos para mostrar."
+            self.resumen_top = MESSAGE_NOT_FOUND
 
         if self.orders_by_day_data:
             total_pedidos = sum(x["Pedidos"] for x in self.orders_by_day_data)
             self.resumen_orders = f'Total de pedidos este mes: {total_pedidos}.'
         else:
-            self.resumen_orders = "No hay datos para mostrar."
+            self.resumen_orders = MESSAGE_NOT_FOUND
 
         self.set()
 
@@ -69,7 +72,7 @@ class DashboardState(rx.State):
         url = generate_orders_per_day_pdf(data)
         return rx.download(url)
 
-def DashboardView():
+def dashboard_view() -> rx.Component:
     return rx.box(
         rx.heading("Dashboard Gerencial", size="7", color="#3E2723"),
 
@@ -78,7 +81,7 @@ def DashboardView():
             rx.heading("Reporte: Stock vs Rotación", size="5"),
             rx.text(DashboardState.resumen_stock),
             rx.button(
-                "Descargar PDF",
+                MESSAGE_DOWNLOAD,
                 on_click=DashboardState.download_stock_rotation_pdf,
                 color="#fff",
                 background_color="#3E2723",
@@ -91,7 +94,7 @@ def DashboardView():
             rx.heading("Reporte: Top 5 Productos Más Vendidos", size="5"),
             rx.text(DashboardState.resumen_top),
             rx.button(
-                "Descargar PDF",
+                MESSAGE_DOWNLOAD,
                 on_click=DashboardState.download_top_products_pdf,
                 color="#fff",
                 background_color="#3E2723",
@@ -105,7 +108,7 @@ def DashboardView():
             rx.heading("Reporte: Pedidos por Día", size="5"),
             rx.text(DashboardState.resumen_orders),
             rx.button(
-                "Descargar PDF",
+                MESSAGE_DOWNLOAD,
                 on_click=DashboardState.download_orders_per_day_pdf,
                 color="#fff",
                 background_color="#3E2723",

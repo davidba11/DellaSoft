@@ -6,8 +6,9 @@ from typing import List, Dict
 from ..services.TransactionService import get_transactions_by_date_range_service
 from ..services.CustomerService import select_by_id_service   # para username
 
+OBS_TEXT="Observación"
 # ── columnas (sin “Acciones”) ────────────────────────────────────────────────
-TABLE_COLUMNS: List[str] = ["Usuario", "Observación", "Monto", "Fecha", "Estado"]
+TABLE_COLUMNS: List[str] = ["Usuario", OBS_TEXT, "Monto", "Fecha", "Estado"]
 
 
 class TransactionView(rx.State):
@@ -116,7 +117,7 @@ class TransactionView(rx.State):
             # fila
             row = {
                 "Usuario": username,
-                "Observación": tx.observation or "",
+                OBS_TEXT: tx.observation or "",
                 "Monto": tx.amount,
                 "Fecha": tx.transaction_date.strftime("%Y-%m-%d %H:%M")
                 if tx.transaction_date
@@ -215,7 +216,7 @@ def _table_header() -> rx.Component:
 def _table_body(tx: Dict) -> rx.Component:
     return rx.table.row(
         rx.table.cell(tx["Usuario"]),
-        rx.table.cell(tx["Observación"]),
+        rx.table.cell(tx[OBS_TEXT]),
         rx.table.cell(tx["Monto"]),
         rx.table.cell(tx["Fecha"]),
         rx.table.cell(tx["Estado"]),

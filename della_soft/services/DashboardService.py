@@ -11,7 +11,7 @@ async def get_stock_rotation_data_month():
     orders = await select_all_orders()
 
     mes_actual = date.today().month
-    año_actual = date.today().year
+    anho_actual = date.today().year
 
     data = []
     for producto in productos:
@@ -26,7 +26,7 @@ async def get_stock_rotation_data_month():
                     o.id == po.id_order and
                     o.order_date and
                     o.order_date.month == mes_actual and
-                    o.order_date.year == año_actual
+                    o.order_date.year == anho_actual
                     for o in orders
                 )
         )
@@ -45,7 +45,7 @@ async def get_top_products_month():
     orders = await select_all_orders()
 
     mes_actual = date.today().month
-    año_actual = date.today().year
+    anho_actual = date.today().year
 
     ventas = []
     for producto in productos:
@@ -55,7 +55,7 @@ async def get_top_products_month():
                 any(
                     o.id == po.id_order and
                     o.order_date.month == mes_actual and
-                    o.order_date.year == año_actual
+                    o.order_date.year == anho_actual
                     for o in orders
                 )
         ])
@@ -69,12 +69,12 @@ async def get_top_products_month():
 async def get_orders_per_day_month():
     orders = await select_all_orders()
     mes_actual = date.today().month
-    año_actual = date.today().year
+    anho_actual = date.today().year
 
     today = date.today()
     primer_dia = today.replace(day=1)
     if mes_actual == 12:
-        primer_dia_siguiente_mes = primer_dia.replace(year=año_actual+1, month=1)
+        primer_dia_siguiente_mes = primer_dia.replace(year=anho_actual+1, month=1)
     else:
         primer_dia_siguiente_mes = primer_dia.replace(month=mes_actual+1)
     dias = (primer_dia_siguiente_mes - primer_dia).days
@@ -82,7 +82,7 @@ async def get_orders_per_day_month():
     conteo = { (primer_dia + timedelta(days=i)).strftime("%d/%m") : 0 for i in range(dias) }
 
     for order in orders:
-        if order.order_date.month == mes_actual and order.order_date.year == año_actual:
+        if order.order_date.month == mes_actual and order.order_date.year == anho_actual:
             clave = order.order_date.strftime("%d/%m")
             if clave in conteo:
                 conteo[clave] += 1

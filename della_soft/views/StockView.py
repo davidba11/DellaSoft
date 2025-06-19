@@ -7,22 +7,19 @@ from ..services.IngredientService      import select_all_ingredient_service
 from ..services.IngredientStockService import (
     select_all_stock_service   as select_all_ing_stock_service,
     insert_ingredient_stock_service,
-    update_ingredient_stock_service,        # 👈 nuevo
+    update_ingredient_stock_service,
 )
 from ..services.ProductService         import select_all_product_service
 from ..services.ProductStockService    import (
     select_all_stock_service   as select_all_prod_stock_service,
     insert_product_stock_service,
-    update_product_stock_service,            # 👈 nuevo
+    update_product_stock_service,
 )
 from ..models.ProductModel             import ProductType
 from ..services.MeasureService         import select_name_by_id
 from ..repositories.LoginRepository import AuthState
 
 
-# ╔═══════════════════════════════════════════════════════════════════════╗
-#║                                STATE                                  ║
-#╚═══════════════════════════════════════════════════════════════════════╝
 class StockView(rx.State):
 
     @rx.event
@@ -32,7 +29,6 @@ class StockView(rx.State):
     @rx.event
     def change_edit_min_quantity(self, v: str):
         self.edit_min_quantity = float(v or 0)
-    """Gestión unificada del stock de productos e ingredientes."""
 
     # ─────────────────────────── constantes ────────────────────────────
     type_options: list[str] = ["Producto", "Ingrediente"]
@@ -112,60 +108,61 @@ class StockView(rx.State):
         return self._page_data
 
     # ------------------------------------------------------------------
+        
+    async def _product_rows(self, filtro: str) -> list[dict]:
+        stocks     = await select_all_prod_stock_service()
+        productos  = {p.id: p for p in await select_all_product_service()}
+
+        return [
+            {
+                "stock_id":  ps.id,
+                "id":        prod.id,
+                "name":      prod.name,
+                "qty":       ps.quantity,
+                "min":       ps.min_quantity,
+                "color":     stock_color(ps.quantity, ps.min_quantity),
+            }
+            for ps in stocks
+            if (prod := productos.get(ps.product_id))               # existe el prod
+            if not filtro or filtro in prod.name.lower()            # pasa filtro
+        ]
+
+    async def _ingredient_rows(self, filtro: str) -> list[dict]:
+        stocks      = await select_all_ing_stock_service()
+        ingredientes = {i.id: i for i in await select_all_ingredient_service()}
+
+        return [
+            {
+                "stock_id":  is_.id,
+                "id":        ing.id,
+                "name":      ing.name,
+                "qty":       is_.quantity,
+                "min":       is_.min_quantity,
+                "measure":   select_name_by_id(ing.measure_id),
+                "color":     stock_color(is_.quantity, is_.min_quantity),
+            }
+            for is_ in stocks
+            if (ing := ingredientes.get(is_.ingredient_id))         # existe ing
+            if not filtro or filtro in ing.name.lower()             # pasa filtro
+        ]
+
+# ---------------------------------- evento -----------------------------------
+
     @rx.event
     async def load_stock(self):
-        """Genera las filas filtradas por búsqueda."""
-        txt = self.search_text.lower()
+        """Carga y filtra las filas de stock según la pestaña y la búsqueda."""
+        filtro = self.search_text.lower()
 
         if self.selected_tab == "product":
-            prod_stock = await select_all_prod_stock_service()
-            productos  = await select_all_product_service()
-            pmap = {p.id: p for p in productos}
-
-            filas = []
-            for row in prod_stock:
-                prod = pmap.get(row.product_id)
-                if not prod:
-                    continue
-                if txt and txt not in prod.name.lower():
-                    continue
-                filas.append({
-                    "stock_id":  row.id,
-                    "id":        prod.id,
-                    "name":      prod.name,
-                    "qty":       row.quantity,
-                    "min":       row.min_quantity,
-                    "color":     stock_color(row.quantity, row.min_quantity),  # ← NUEVO
-                })
-            self.product_rows = filas
-            rows = filas
-
+            rows = await self._product_rows(filtro)
+            self.product_rows = rows
         else:
-            ing_stock = await select_all_ing_stock_service()
-            ingrs     = await select_all_ingredient_service()
-            imap = {i.id: i for i in ingrs}
+            rows = await self._ingredient_rows(filtro)
+            self.ingredient_rows = rows
 
-            filas = []
-            for row in ing_stock:
-                ing = imap.get(row.ingredient_id)
-                if not ing:
-                    continue
-                if txt and txt not in ing.name.lower():
-                    continue
-                filas.append({
-                    "stock_id":  row.id,
-                    "id":        ing.id,
-                    "name":      ing.name,
-                    "qty":       row.quantity,
-                    "min":       row.min_quantity,
-                    "measure":   select_name_by_id(ing.measure_id),
-                    "color":     stock_color(row.quantity, row.min_quantity),  # ← NUEVO
-                })
-            self.ingredient_rows = filas
-            rows = filas
-
+        # paginación
         self.total_items = len(rows)
-        self._page_data  = rows[self.offset:self.offset+self.limit]
+        self._page_data  = rows[self.offset : self.offset + self.limit]    
 
     # ═══════════════════════ MODAL ALTA ═══════════════════════════════
     @rx.event

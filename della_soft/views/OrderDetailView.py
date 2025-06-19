@@ -10,10 +10,12 @@ from ..services.ProductService import (
 )
 from ..models.ProductModel import Product
 
+DESCRIPTION_TEXT="Descripción"
+
 class OrderDetailView(rx.State):
     data: List[Product]
     plain_data: List[Product] = []
-    columns: List[str] = ["Nombre", "Descripción", "Tipo", "Precio", "Acciones"]
+    columns: List[str] = ["Nombre", DESCRIPTION_TEXT, "Tipo", "Precio", "Acciones"]
     input_search: str
 
     offset: int = 0
@@ -149,7 +151,7 @@ def product_count_cell(product_id: int) -> rx.Component:
         text_align="center",
     )
 
-def search_OrderDetail_component() -> rx.Component:
+def search_order_detail_component() -> rx.Component:
     return rx.hstack(
         rx.input(
             placeholder="Buscar Producto",
@@ -196,7 +198,7 @@ def create_product_form() -> rx.Component:
                     color="white",
                 ),
                 rx.text_area(
-                    placeholder="Descripción",
+                    placeholder=DESCRIPTION_TEXT,
                     name="description",
                     width="40%",
                     background_color="#3E2723",
@@ -219,7 +221,7 @@ def create_product_form() -> rx.Component:
 
 def main_actions_form() -> rx.Component:
     return rx.hstack(
-        search_OrderDetail_component(),
+        search_order_detail_component(),
         justify="center",
         style={"margin-top": "auto", "width": "100%"},
         gap="4",
@@ -228,7 +230,7 @@ def main_actions_form() -> rx.Component:
 def get_table_header() -> rx.Component:
     return rx.table.row(
         rx.table.column_header_cell("Nombre"),
-        rx.table.column_header_cell("Descripción"),
+        rx.table.column_header_cell(DESCRIPTION_TEXT),
         rx.table.column_header_cell("Tipo"),
         rx.table.column_header_cell("Precio"),
         rx.table.column_header_cell("Acciones"),
@@ -260,9 +262,8 @@ def get_table_body(product: Product) -> rx.Component:
                 ),
                 spacing="2",
                 justify="center",
-            )
+            ),
         ),
-        #color="#3E2723",
     )
 
 def pagination_controls() -> rx.Component:
@@ -291,7 +292,7 @@ def pagination_controls() -> rx.Component:
     )
 
 @rx.page(on_load=OrderDetailView.load_OrderDetails)
-def OrderDetails() -> rx.Component:
+def order_details() -> rx.Component:
     return rx.box(
         rx.vstack(
             main_actions_form(),

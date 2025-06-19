@@ -1,6 +1,5 @@
 import reflex as rx
 from ..repositories.LoginRepository import AuthState
-#from .MenuView import MenuView
 
 def login_page():
     return rx.flex(

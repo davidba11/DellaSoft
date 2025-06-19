@@ -10,13 +10,16 @@ from ..services.ProductService import select_all_product_service, create_product
 
 from ..models.ProductModel import Product
 
+DESCRIPTION_TEXT="Descripción"
+BASIC_TEXT="Precio Por Kilo"
+
 class ProductView(rx.State):
     data: list[Product]
-    columns: List[str] = ["Nombre", "Descripción", "Tipo", "Precio", "Acciones"]
+    columns: List[str] = ["Nombre", DESCRIPTION_TEXT, "Tipo", "Precio", "Acciones"]
     new_product: dict = {}
 
     input_search: str
-    value: str = "Precio Por Kilo"
+    value: str = BASIC_TEXT
 
     offset: int = 0
     limit: int = 5  # Número de productos por página
@@ -62,11 +65,12 @@ class ProductView(rx.State):
     @rx.event
     async def insert_product_controller(self, form_data: dict):
         try:
-            new_product = create_product(id="", name=form_data['name'], description=form_data['description'], product_type=form_data['product_type'], price=form_data['price'])
+            create_product(id="", name=form_data['name'], description=form_data['description'], product_type=form_data['product_type'], price=form_data['price'])
             yield ProductView.load_products()
             self.set()
         except BaseException as e:
             print(e.args)
+            raise
 
     async def load_product_information(self, value: str):
         self.input_search = value
@@ -154,7 +158,7 @@ def update_product_form() -> rx.Component:
                 ),
                 rx.text("Categoría:", color="white"),
                 rx.select(
-                    ["Precio Por Kilo", "Precio Fijo"],
+                    [BASIC_TEXT, "Precio Fijo"],
                     value=ProductView.product_type,
                     on_change=ProductView.set_product_type,	
                     name="product_type",
@@ -187,7 +191,7 @@ def update_product_form() -> rx.Component:
             rx.grid(
                 rx.text("Descripción:", color="white"),
                 rx.text_area(
-                    placeholder="Descripción",
+                    placeholder=DESCRIPTION_TEXT,
                     name="description",
                     value=ProductView.description,
                     on_change = ProductView.set_description,
@@ -238,7 +242,7 @@ def create_product_form() -> rx.Component:
                 ),
                 rx.text("Categoría:", color="white"),
                 rx.select(
-                    ["Precio Por Kilo", "Precio Fijo"],
+                    [BASIC_TEXT, "Precio Fijo"],
                     value=ProductView.value,
                     on_change=ProductView.change_value,
                     name="product_type",
@@ -269,7 +273,7 @@ def create_product_form() -> rx.Component:
             rx.grid(
                 rx.text("Descripción:", color="white"),
                 rx.text_area(
-                    placeholder="Descripción",
+                    placeholder=DESCRIPTION_TEXT,
                     name="description",
                     background_color="#3E2723",
                     placeholder_color="white",

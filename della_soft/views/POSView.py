@@ -9,7 +9,7 @@ from ..services.SystemService import (
     get_sys_date_three,
 )
 from ..repositories.LoginRepository import AuthState
-from ..services.POSService import POS_is_open, insert_pos_register, update_final_amount
+from ..services.POSService import pos_is_open, insert_pos_register, update_final_amount
 from ..services.OrderService import select_all_order_service, update_pay_amount_service
 from ..services.CustomerService import select_name_by_id
 from ..services.ProductOrderService import get_fixed_products_by_order_id
@@ -21,6 +21,8 @@ from ..models.TransactionModel import Transaction
 from datetime import datetime
 
 from .OrderView import OrderView, view_order_modal
+
+MESSAGE_KILL_SESSION="Sesión expirada. Vuelve a iniciar sesión"
 
 def render_row(item: dict) -> rx.Component:
     order_id      = item["id"]
@@ -269,7 +271,7 @@ class POSView(rx.State):
     @rx.event
     async def load_date(self):
         self.sys_date = get_sys_date_to_string_two()
-        self.pos = POS_is_open(get_sys_date_two(self.sys_date))
+        self.pos = pos_is_open(get_sys_date_two(self.sys_date))
         self.is_open = self.pos is not None
         orders = await select_all_order_service()
         self.pos_data = [
@@ -323,73 +325,94 @@ class POSView(rx.State):
             yield POSView.load_date()
         except BaseException as e:
             print(e.args)
+            raise
 
     @rx.event
     async def process_payment(self, form_data: dict):
         order_id = int(form_data.get("order_id", 0))
         amount   = int(form_data.get("pending", 0))
+
+        if not await self._valid_session():
+            yield rx.toast(MESSAGE_KILL_SESSION)
+            return
+
+        order = self._find_order(order_id)
+        if order is None:
+            return
+
+        try:
+            await self._check_stock(order_id)                   # ①
+            await self._record_tx(order_id, amount)             # ②
+            await self._update_order_paid(order, amount)        # ③
+            await self._update_pos(amount)                      # ④
+            await self._update_stock_if_completed(order_id, order, amount)  # ⑤
+            await self._maybe_make_invoice(order_id, order, amount)         # ⑥
+        except ValueError as err:                               # stock insuf.
+            yield rx.toast(str(err))
+            return
+        except Exception as err:                                # errores varios
+            print("Error en process_payment:", err)
+            yield rx.toast("Se produjo un error. Intenta nuevamente.")
+            return
+
+        yield POSView.load_date()
+
+    # -------------  Helpers  -------------------------
+    async def _valid_session(self) -> bool:
         auth = await self.get_state(AuthState)
-        user_id = auth.current_user_id
-        if user_id is None:
-            yield rx.toast("Sesión expirada. Vuelve a iniciar sesión")
-            return
+        self._user_id = auth.current_user_id
+        return self._user_id is not None
 
+    def _find_order(self, order_id: int) -> dict | None:
         order = next((o for o in self.pos_data if o["id"] == order_id), None)
-        if not order:
+        if order is None:
             print(f"Pedido {order_id} no encontrado")
-            return
+        return order
 
-        fixed_products = get_fixed_products_by_order_id(order_id)
-
-        for po in fixed_products:
-            stock_row = await get_stock_by_product_service(po.id_product)
-            if stock_row is None or stock_row.quantity < po.quantity:
-                yield rx.toast("Cantidad en stock superado. Favor reabastecer stock para continuar")
-                self.is_payment_invalid = True
-                self.payment_error = (
-                    f"Stock insuficiente para el producto ID {po.id_product} "
-                    f"(disponible: {stock_row.quantity if stock_row else 0}, "
+    async def _check_stock(self, order_id: int) -> None:
+        for po in get_fixed_products_by_order_id(order_id):
+            stock = await get_stock_by_product_service(po.id_product)
+            if stock is None or stock.quantity < po.quantity:
+                raise ValueError(
+                    f"Stock insuficiente – producto {po.id_product} "
+                    f"(disponible: {stock.quantity if stock else 0}, "
                     f"solicitado: {po.quantity})"
                 )
-                self.set()
-                return
 
-        new_total_paid = order["total_paid"] + amount
-        try:
-            create_transaction(
-                Transaction(
-                    id=None,
-                    observation=f"Pago por {amount}",
-                    amount=amount,
-                    transaction_date=datetime.now(),
-                    status="PAGO",
-                    id_POS=self.pos.id,
-                    id_user=user_id,
-                    id_order=order_id,
-                )
-            )
-            update_pay_amount_service(Order(id=order_id, total_paid=new_total_paid))
-        except Exception as e:
-            print("Error al procesar pago/registro de transacción:", e)
-            return
+    async def _record_tx(self, order_id: int, amount: int) -> None:
+        create_transaction(Transaction(
+            id=None,
+            observation=f"Pago por {amount}",
+            amount=amount,
+            transaction_date=datetime.now(),
+            status="PAGO",
+            id_POS=self.pos.id,
+            id_user=self._user_id,
+            id_order=order_id,
+        ))
 
+    async def _update_order_paid(self, order: dict, amount: int) -> None:
+        new_total = order["total_paid"] + amount
+        update_pay_amount_service(Order(id=order["id"], total_paid=new_total))
+        order["total_paid"] = new_total        # reflejar en cache
+
+    async def _update_pos(self, amount: int) -> None:
         update_final_amount(
             self.pos.id,
             self.pos.initial_amount,
             self.pos.final_amount + amount,
             self.pos.pos_date,
         )
+        self.pos.final_amount += amount        # mantener sincronizado
 
-        if new_total_paid >= order["total_order"]:
-            try:
-                for po in fixed_products:
-                    await update_stock_with_pay_service(po.id_product, po.quantity)
-            except Exception as e:
-                print("Error al actualizar stock:", e)
+    async def _update_stock_if_completed(self, order_id: int, order: dict, amount: int):
+        if order["total_paid"] >= order["total_order"]:
+            for po in get_fixed_products_by_order_id(order_id):
+                await update_stock_with_pay_service(po.id_product, po.quantity)
 
-        if amount == order["pending"]:
-            yield OrderView.generate_invoice_pdf_event(order_id)
-        yield POSView.load_date()
+    async def _maybe_make_invoice(self, order_id: int, order: dict, amount: int):
+        if amount == order["pending"]:               # era el último pago
+            await OrderView.generate_invoice_pdf_event(order_id)
 
     @rx.event
     async def process_reverse(self, form_data: dict):
@@ -399,7 +422,7 @@ class POSView(rx.State):
         auth    = await self.get_state(AuthState)
         user_id = auth.current_user_id
         if user_id is None:
-            yield rx.toast("Sesión expirada. Vuelve a iniciar sesión")
+            yield rx.toast(MESSAGE_KILL_SESSION)
             return
 
         order = next((o for o in self.pos_data if o["id"] == order_id), None)
@@ -451,7 +474,7 @@ class POSView(rx.State):
         auth = await self.get_state(AuthState)
         user_id = auth.current_user_id
         if user_id is None:
-            yield rx.toast("Sesión expirada. Vuelve a iniciar sesión")
+            yield rx.toast(MESSAGE_KILL_SESSION)
             return
         try:
             create_transaction(
@@ -497,7 +520,6 @@ def create_pos_form() -> rx.Component:
                 rx.cond(
                     POSView.is_open,
                     rx.input(
-                        placeholder="Monto Inicial",
                         name="initial_amount",
                         type="number",
                         background_color="#5D4037",
@@ -508,7 +530,6 @@ def create_pos_form() -> rx.Component:
                         read_only=True,
                     ),
                     rx.input(
-                        placeholder="Monto Inicial",
                         name="initial_amount",
                         type="number",
                         background_color="#3E2723",

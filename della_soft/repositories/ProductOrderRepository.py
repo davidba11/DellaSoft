@@ -44,7 +44,6 @@ def delete_product_order(id: int):
     engine = connect()
     with Session(engine) as session:
         query = select(ProductOrder).where(ProductOrder.id == id)
-        customer = session.exec(query).first()
         user_delete = session.exec(query).one()
         session.delete(user_delete)
         session.commit()

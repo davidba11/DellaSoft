@@ -192,6 +192,7 @@ class IngredientView(rx.State):
         except BaseException as e:
             print(e.args)
             yield rx.toast("Error al crear el ingrediente.", duration=3000, position="bottom-right", status="error")
+            raise
    
     @rx.var
     def selected_measure_str(self) -> str:

@@ -20,7 +20,7 @@ from ..services.CustomerService import select_name_by_id, select_all_customer_se
 from ..services.SystemService import get_sys_date_to_string, get_sys_date
 from ..repositories.ProductRepository import get_product
 
-from .OrderDetailView import OrderDetailView, OrderDetails
+from .OrderDetailView import OrderDetailView, order_details
 import os
 from ..models.OrderModel import Order
 
@@ -481,7 +481,7 @@ def create_order_form() -> rx.Component:
                 width="100%",
             ),
             rx.divider(),
-            OrderDetails(),
+            order_details(),
             rx.dialog.close(
                 rx.button(
                     rx.icon("save", size=22),
@@ -569,7 +569,7 @@ def edit_order_form() -> rx.Component:
                 width="100%",
             ),
             rx.divider(),
-            OrderDetails(),
+            order_details(),
             rx.dialog.close(
                 rx.button(
                     rx.icon("save", size=22),
