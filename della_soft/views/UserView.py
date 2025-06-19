@@ -7,10 +7,8 @@ from typing import Any, List, Dict
 
 from ..models.CustomerModel import Customer
 from ..services.CustomerService import (
-    select_all_customer_service, select_by_parameter_service, create_customer_service,
-    delete_customer_service, select_by_id_service, get_total_items_service,
-    create_user_service, select_all_users_service, select_users_by_parameter_service,
-    update_user_service
+    delete_customer_service, create_user_service, select_all_users_service,
+    select_users_by_parameter_service, update_user_service
 )
 from ..services.RolService import select_all_roles_service
 from ..services.SystemService import hash_password

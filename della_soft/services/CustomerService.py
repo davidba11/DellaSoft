@@ -1,6 +1,5 @@
 from ..repositories.CustomerRepository import select_all, select_by_name, select_by_parameter, create_customer, select_by_id, delete_customer, get_total_items, get_customer_section, create_user, select_all_users, select_users_by_parameter, update_customer, update_user
 from ..models.CustomerModel import Customer
-from ..services.SystemService import hash_password
 
 def select_all_customer_service():
     customers = select_all()
@@ -11,14 +10,14 @@ def select_all_users_service():
     return customers
 
 def select_by_parameter_service(value: str):
-    if value.strip():  # Verifica que no esté vacío
-        return select_by_parameter(value)  # Usa la nueva función que busca en nombre, apellido e ID
-    return select_all()  # Si está vacío, devuelve todos los registros
+    if value.strip():
+        return select_by_parameter(value)
+    return select_all()
 
 def select_users_by_parameter_service(value: str):
-    if value.strip():  # Verifica que no esté vacío
-        return select_users_by_parameter(value)  # Usa la nueva función que busca en nombre, apellido e ID
-    return select_all_users()  # Si está vacío, devuelve todos los registros
+    if value.strip():
+        return select_users_by_parameter(value)
+    return select_all_users()
 
 def select_by_id_service(id: int):
     return select_by_id(id)
@@ -36,14 +35,8 @@ def select_name_by_id(customer_id: int) -> str:
 
 def create_customer_service(first_name: str, last_name: str, contact: str, div: int, ci: str):
     
-    # customer = select_by_id(id)
-    # print(customer)
-    # if(len(customer) == 0):
     customer_save = Customer(ci=ci, first_name=first_name, last_name=last_name, contact=contact, div=div, id_rol=3)
-    # print(customer_save)
     return create_customer(customer_save)
-    # else:
-        # raise ValueError("Ya existe un cliente con ese ID.")
 
 def update_customer_service(**kwargs):
     print(kwargs)
@@ -91,8 +84,8 @@ def get_customer_section_service(offset: int, limit: int):
     return get_customer_section(offset, limit)
 
 async def get_customer_id_by_name_service(name: str) -> int:
-    customer = await select_by_name(name)  # Busca el cliente por nombre
+    customer = await select_by_name(name)
     if customer:
-        return customer.id  # Retorna el id del cliente encontrado
+        return customer.id
     else:
         raise ValueError(f"Cliente con nombre {name} no encontrado.")
