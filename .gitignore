@@ -25,3 +25,4 @@ alembic/
 **/.venv/
 **/venv/
 **/.env/
+db_connect.env
