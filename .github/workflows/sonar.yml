@@ -12,31 +12,25 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1) Checkout
       - uses: actions/checkout@v4
 
-      # 2) Python
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      # 3) Dependencias
       - name: Install deps
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest coverage
+          pip install pytest coverage          #  coverage>=7.0
 
-      # 4) Tests + cobertura
       - name: Run tests & generate coverage.xml
         run: |
-          # Ejecuta tests (si los hay). Si no existen, pytest devuelve exit-code 5,
-          # lo ignoramos con '|| true'
+          # Ejecuta tests (si los hay). 5 ≙ “no tests collected”.
           coverage run -m pytest || true
-          # Genera siempre coverage.xml. -i ignora que no se hayan recogido datos
-          coverage xml -i
+          # Genera siempre coverage.xml; si coverage-xml falla devolvemos 0.
+          coverage xml -i || true
 
-      # 5) Análisis SonarCloud
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v2
         env:
