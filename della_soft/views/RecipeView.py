@@ -111,11 +111,11 @@ class RecipeView(ProductView):
     # -------------------------- Carga inicial ---------------------------------
     @rx.event
     async def load_products_and_recipes(self):
-        products = await select_all_product_service()
+        products = select_all_product_service()
         self.total_items = len(products)
         self.data = products[self.offset : self.offset + self.limit]
 
-        recipes = await select_all_recipe_service()
+        recipes = select_all_recipe_service()
         self.recipe_map = {r.id_product: r for r in recipes}
 
         ingredients = await select_all_ingredient_service()

@@ -8,7 +8,7 @@ async def get_stock_rotation_data_month():
     productos = select_all_products()
     product_stocks = select_all_product_stocks()  # Trae TODAS las filas ProductStock
     product_orders = select_all_product_orders()
-    orders = await select_all_orders()
+    orders = select_all_orders()
 
     mes_actual = date.today().month
     anho_actual = date.today().year
@@ -42,7 +42,7 @@ async def get_stock_rotation_data_month():
 async def get_top_products_month():
     productos = select_all_products()
     product_orders = select_all_product_orders()
-    orders = await select_all_orders()
+    orders = select_all_orders()
 
     mes_actual = date.today().month
     anho_actual = date.today().year
@@ -67,7 +67,7 @@ async def get_top_products_month():
     return ventas[:5]
 
 async def get_orders_per_day_month():
-    orders = await select_all_orders()
+    orders = select_all_orders()
     mes_actual = date.today().month
     anho_actual = date.today().year
 

@@ -93,7 +93,7 @@ class UserView(rx.State):
         self.set()
 
     async def load_customers(self):
-        self.customers = await select_all_users_service()
+        self.customers = select_all_users_service()
         self.total_items = len(self.customers)
         self.customers = self.customers[self.offset : self.offset + self.limit]
         self.set()

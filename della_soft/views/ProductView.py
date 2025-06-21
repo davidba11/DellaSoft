@@ -38,7 +38,7 @@ class ProductView(rx.State):
 
     #@rx.event
     async def load_products(self):
-        self.data = await select_all_product_service()
+        self.data = select_all_product_service()
         self.total_items = len(self.data)
         self.data = self.data [self.offset : self.offset + self.limit]
 

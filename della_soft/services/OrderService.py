@@ -8,7 +8,7 @@ from ..models.OrderModel import Order
 
 
 async def select_all_order_service():
-    orders = await select_all()
+    orders = select_all()
     return orders
 
 def select_order(value: str):

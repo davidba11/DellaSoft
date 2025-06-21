@@ -25,9 +25,9 @@ class DashboardState(rx.State):
 
     @rx.event
     async def load_dashboard_data(self):
-        self.stock_rotation_data = await get_stock_rotation_data_month()
-        self.top_products_data = await get_top_products_month()
-        self.orders_by_day_data = await get_orders_per_day_month()
+        self.stock_rotation_data = get_stock_rotation_data_month()
+        self.top_products_data = get_top_products_month()
+        self.orders_by_day_data = get_orders_per_day_month()
 
         if self.stock_rotation_data:
             prod_mas_vendido = max(self.stock_rotation_data, key=lambda x: x["Cantidad Vendida (Rotación)"])

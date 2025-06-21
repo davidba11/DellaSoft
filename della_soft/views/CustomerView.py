@@ -45,7 +45,7 @@ class CustomerView(rx.State):
     # ──────────────────────────── CARGA INICIAL ─────────────────────────
     @rx.event
     async def load_customers(self):
-        self.customers = await select_all_customer_service()
+        self.customers = select_all_customer_service()
         self.total_items = len(self.customers)
         self.customers = self.customers[self.offset : self.offset + self.limit]
         self.set()

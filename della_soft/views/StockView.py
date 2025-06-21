@@ -111,7 +111,7 @@ class StockView(rx.State):
         
     async def _product_rows(self, filtro: str) -> list[dict]:
         stocks     = await select_all_prod_stock_service()
-        productos  = {p.id: p for p in await select_all_product_service()}
+        productos  = {p.id: p for p in select_all_product_service()}
 
         return [
             {
@@ -154,10 +154,10 @@ class StockView(rx.State):
         filtro = self.search_text.lower()
 
         if self.selected_tab == "product":
-            rows = await self._product_rows(filtro)
+            rows = self._product_rows(filtro)
             self.product_rows = rows
         else:
-            rows = await self._ingredient_rows(filtro)
+            rows = self._ingredient_rows(filtro)
             self.ingredient_rows = rows
 
         # paginación
